@@ -1,0 +1,131 @@
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_mac.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_netif_net_stack.h"
+#include "esp_netif.h"
+#include "nvs_flash.h"
+#include "lwip/inet.h"
+#include "lwip/netdb.h"
+#include "lwip/sockets.h"
+
+#define WIFI_SSID "WesleyMiniNetwork"         // SSID for the access point
+#define WIFI_PASS "WesleyMiniNetwork"         // Simple password for easy connection
+#define PORT 3333                    // TCP port number for the server
+
+static const char *TAG = "ESP32_AP_TCP_SERVER";
+
+void tcp_server_task(void *pvParameters) {
+    char rx_buffer[128];               // Buffer to receive data
+    char tx_buffer[128] = "Hello from ESP32 Server!\n"; // Message to send
+    struct sockaddr_in server_addr;    // Server address information
+    struct sockaddr_in client_addr;    // Client address information
+    int addr_len = sizeof(client_addr);
+    
+    // Create socket
+    int server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if (server_socket < 0) {
+        ESP_LOGE(TAG, "Unable to create socket");
+        vTaskDelete(NULL);
+        return;
+    }
+    ESP_LOGI(TAG, "Socket created");
+
+    // Bind the socket to the configured port and address
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0) {
+        ESP_LOGE(TAG, "Socket unable to bind");
+        close(server_socket);
+        vTaskDelete(NULL);
+        return;
+    }
+    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+
+    // Listen for incoming connections
+    if (listen(server_socket, 1) != 0) {
+        ESP_LOGE(TAG, "Error during listen");
+        close(server_socket);
+        vTaskDelete(NULL);
+        return;
+    }
+    ESP_LOGI(TAG, "Socket listening");
+
+    while (1) {
+        // Accept an incoming client connection
+        int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, (socklen_t *)&addr_len);
+        if (client_socket < 0) {
+            ESP_LOGE(TAG, "Unable to accept connection");
+            continue;
+        }
+        ESP_LOGI(TAG, "Client connected");
+
+        // Send and receive messages with the client
+        while (1) {
+            // Receive data from client
+            int len = recv(client_socket, rx_buffer, sizeof(rx_buffer) - 1, 0);
+            if (len < 0) {
+                ESP_LOGE(TAG, "Receive failed");
+                break;
+            } else if (len == 0) {
+                ESP_LOGI(TAG, "Client disconnected");
+                break;
+            } else {
+                rx_buffer[len] = 0; // Null-terminate the received data
+                ESP_LOGI(TAG, "Received %s", rx_buffer);
+
+                // Send a response back to the client
+                send(client_socket, tx_buffer, strlen(tx_buffer), 0);
+            }
+        }
+
+        // Close client socket after communication
+        close(client_socket);
+    }
+}
+
+void wifi_init_softap() {
+    // WiFi configuration for the AP mode
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    
+    wifi_config_t ap_config = {
+        .ap = {
+            .ssid = WIFI_SSID,
+            .ssid_len = strlen(WIFI_SSID),
+            .channel = 1,
+            .password = WIFI_PASS,
+            .max_connection = 10,
+            .authmode = WIFI_AUTH_OPEN
+        },
+    };
+    
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_LOGI(TAG, "WiFi AP mode initialized with SSID: %s", WIFI_SSID);
+}
+
+void app_main(void) {
+    // Initialize NVS for WiFi configuration storage
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    // Initialize WiFi and set up as Access Point
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    wifi_init_softap();
+
+    // Start TCP server task
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, NULL);
+}
