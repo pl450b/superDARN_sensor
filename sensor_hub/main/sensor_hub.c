@@ -17,7 +17,8 @@
 #endif
 #include "lwip/err.h"
 #include "lwip/sys.h"
-
+#include "driver/uart.h"
+#include "driver/gpio.h"
 
 /* AP Configuration */  
 #define WIFI_AP_SSID                "WesleyMiniNetwork"
@@ -28,7 +29,7 @@
 #define KEEPALIVE_IDLE               240
 #define KEEPALIVE_INTERVAL           10
 #define KEEPALIVE_COUNT              5
-
+#define UART_NUM                     2
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -115,7 +116,16 @@ static void do_retransmit(const int sock)
         }
     } 
 }
-
+static void uart_send_test(void *pvParameters)
+{
+    while(1) {
+      // Write data to UART.
+    char* test_str = "This is a test string.\n";
+    uart_write_bytes(UART_NUM, (const char*)test_str, strlen(test_str));
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    ESP_LOGI("UART2", "send test string over uart2");
+    }
+}
 static void tcp_server_task(void *pvParameters)
 {
     char addr_str[128];
@@ -246,9 +256,30 @@ void app_main(void)
 
     /* Start WiFi */
     ESP_ERROR_CHECK(esp_wifi_start() );
-
-    // Start TCP server task
+    
+    
+    /* Initialize UART1 */ 
+    const uart_port_t uart_num = UART_NUM;
+    uart_config_t uart_config = {
+      .baud_rate = 115200,
+      .data_bits = UART_DATA_8_BITS,
+      .parity = UART_PARITY_DISABLE,
+      .stop_bits = UART_STOP_BITS_1,
+      .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
+      .rx_flow_ctrl_thresh = 122,
+    };
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, 17, 16, 18, 19));
+    // Setup UART buffered IO with event queue
+    const int uart_buffer_size = (1024 * 2);
+    QueueHandle_t uart_queue;
+    // Install UART driver using an event queue here
+    //ESP_ERROR_CHECK(uart_driver_install(UART_NUM, uart_buffer_size, uart_buffer_size, 10, &uart_queue, 0));
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, uart_buffer_size, 0, 0, NULL, 0));
+    //Start TCP server task
     xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+
+    xTaskCreate(uart_send_test, "uart test", 4096, NULL, 5, NULL);
 
 
 }
