@@ -117,8 +117,7 @@ void wifi_init_sta(void)
 void tcp_client_task(void *pvParameters) {
     struct sockaddr_in server_addr;
     int sock;
-    char msg1_buffer[128] = "This is the first message!\n";
-    char msg2_buffer[128] = "This is the second message!\n";
+    char msg_buffer[128];
 
     while (1) {
         // Configure server address
@@ -147,13 +146,20 @@ void tcp_client_task(void *pvParameters) {
 
 
         // Send message to server
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        send(sock, msg1_buffer, strlen(msg1_buffer), 0);
-        ESP_LOGI(TAG, "First Message Sent");
+        strcpy(msg_buffer, "Sensor 1: 5.2V, Sensor 2, 401.3V, Sensor 3: 32.4 C\r\n");
         vTaskDelay(5000 / portTICK_PERIOD_MS);
-        send(sock, msg2_buffer, strlen(msg1_buffer), 0);
-        ESP_LOGI(TAG, "Both messages sent, closing socket");
-
+        send(sock, msg_buffer, strlen(msg_buffer), 0);
+        ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
+        
+        strcpy(msg_buffer, "Sensor 1: 5.6V, Sensor 2, 399.7V, Sensor 3: 32.1 C\r\n");
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        send(sock, msg_buffer, strlen(msg_buffer), 0);
+        ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
+        
+        strcpy(msg_buffer, "Sensor 1: 4.9V, Sensor 2, 398.3V, Sensor 3: 31.7 C\r\n");
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        send(sock, msg_buffer, strlen(msg_buffer), 0);
+        ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
 
         // Close socket before retrying
         close(sock);

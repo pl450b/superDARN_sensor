@@ -85,37 +85,6 @@ esp_netif_t *wifi_init_softap(void)
     return esp_netif_ap;
 }
 
-static void do_retransmit(const int sock)
-{
-    int len;
-    char rx_buffer[128];
-    char tx_buffer[128] = "Hi Trevor and Dakota";
-
-    while(1) {
-        len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-        if (len < 0) {
-            ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        } else if (len == 0) {
-            ESP_LOGW(TAG, "Connection closed");
-        } else {
-            rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-            ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
-
-            // send() can return less bytes than supplied length.
-            // Walk-around for robust implementation.
-            int to_write = len;
-            while (to_write > 0) {
-                int written = send(sock, rx_buffer + (len - to_write), to_write, 0);
-                if (written < 0) {
-                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                    // Failed to retransmit, giving up
-                    return;
-                }
-                to_write -= written;
-            } 
-        }
-    } 
-}
 static void uart_send_test(void *pvParameters)
 {
     while(1) {
@@ -123,9 +92,10 @@ static void uart_send_test(void *pvParameters)
     char* test_str = "This is a test string.\n";
     uart_write_bytes(UART_NUM, (const char*)test_str, strlen(test_str));
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    ESP_LOGI("UART2", "send test string over uart2");
+    ESP_LOGI("UART2", "sent test string over 2");
     }
 }
+
 static void tcp_server_task(void *pvParameters)
 {
     char addr_str[128];
@@ -139,7 +109,6 @@ static void tcp_server_task(void *pvParameters)
     // Added below when do_retransmit() commented out
     int len;
     char rx_buffer[128];
-    char tx_buffer[128] = "Hi Trevor and Dakota";
 
     if (addr_family == AF_INET) {
         struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
@@ -207,8 +176,9 @@ static void tcp_server_task(void *pvParameters)
                 ESP_LOGW(TAG, "Connection closed");
                 break;
             } else {
-                rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
-                ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+                rx_buffer[len] = 0; // Null-terminate whatever is received (like str)
+                ESP_LOGI(TAG, "Received %d bytes: %s, forwarding over UART", len, rx_buffer);
+                uart_write_bytes(UART_NUM, (const char*)rx_buffer, strlen(rx_buffer));
             }
         }
         
@@ -280,5 +250,5 @@ void app_main(void)
     //Start TCP server task
     xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
 
-    xTaskCreate(uart_send_test, "uart test", 4096, NULL, 5, NULL);
+    // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 5, NULL);
 }
