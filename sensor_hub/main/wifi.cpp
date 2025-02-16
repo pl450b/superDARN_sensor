@@ -17,29 +17,29 @@
 #endif
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "driver/uart.h"
 #include "driver/gpio.h"
+
+#include "wifi.h"
 
 /* AP Configuration */  
 #define WIFI_AP_SSID                "WesleyMiniNetwork"
 #define WIFI_AP_PASSWD              "WesleyMiniNetwork"
 #define WIFI_CHANNEL                 6
-#define MAX_STA_CONN                 15
+#define MAX_STA_CONN                 18
 #define PORT                         3333                    // TCP port number for the server
 #define KEEPALIVE_IDLE               240
 #define KEEPALIVE_INTERVAL           10
 #define KEEPALIVE_COUNT              5
-#define UART_NUM                     2
-
+#define SERVER_IP                   "192.168.4.2"  
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "Sensor Unit";
+extern QueueHandle_t sensorQueue;
 
-static int s_retry_num = 0;
+static const char *TAG = "Sensor Unit";
 
 /* FreeRTOS event group to signal when we are connected/disconnected */
 static EventGroupHandle_t s_wifi_event_group;
@@ -53,24 +53,24 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                  MAC2STR(event->mac), event->aid);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d",
+  ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d",
                  MAC2STR(event->mac), event->aid, event->reason);
     }
 }
 
 /* Initialize soft AP */
-esp_netif_t *wifi_init_softap(void)
+static esp_netif_t *wifi_init_softap(void)
 {
     esp_netif_t *esp_netif_ap = esp_netif_create_default_wifi_ap();
 
     wifi_config_t wifi_ap_config = {
         .ap = {
             .ssid = WIFI_AP_SSID,
+            .password = WIFI_AP_PASSWD,
             .ssid_len = strlen(WIFI_AP_SSID),
             .channel = WIFI_CHANNEL,
-            .password = WIFI_AP_PASSWD,
-            .max_connection = MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA2_PSK,
+            .max_connection = MAX_STA_CONN,
             .pmf_cfg = {
                 .required = false,
             },
@@ -85,30 +85,66 @@ esp_netif_t *wifi_init_softap(void)
     return esp_netif_ap;
 }
 
-static void uart_send_test(void *pvParameters)
-{
-    while(1) {
-      // Write data to UART.
-    char* test_str = "This is a test string.\n";
-    uart_write_bytes(UART_NUM, (const char*)test_str, strlen(test_str));
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    ESP_LOGI("UART2", "sent test string over 2");
+
+void tcp_client_task(void *pvParameters) {
+    struct sockaddr_in server_addr;
+    int sock;
+    int len;
+    char rx_buffer[128];
+
+    while (1) {
+        // Configure server address
+        server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(PORT);
+
+        // Create socket
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Unable to create socket");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
+        }
+        ESP_LOGI(TAG, "Socket created");
+
+        // Connect to socket
+        int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        if (err != 0) {
+            ESP_LOGE(TAG, "Socket unable to connect, error: %d", errno);
+            close(sock);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
+        }
+        ESP_LOGI(TAG, "Connected to server, ready to receive!");
+        
+        while(1) {
+            len = recv(sock, rx_buffer, sizeof(rx_buffer)-1, 0);
+            if(len < 0) { 
+                ESP_LOGE(TAG, "Error occurred when receiving: error %d", errno);
+                break;
+            } else if (len == 0) {
+                ESP_LOGW(TAG, "Connection closed");
+                break;
+            } else {
+                rx_buffer[len] = 0;
+                ESP_LOGI(TAG, "Received: %s", rx_buffer);
+            }
+        }
+    close(sock);
     }
 }
 
-static void tcp_server_task(void *pvParameters)
+void tcp_server_task(void *pvParameters)
 {
     char addr_str[128];
-    int addr_family = (int)pvParameters;
+    int addr_family = AF_INET;
     int ip_protocol = 0;
     int keepAlive = 1;
+    char msg_buffer[128];
     int keepIdle = KEEPALIVE_IDLE;
     int keepInterval = KEEPALIVE_INTERVAL;
     int keepCount = KEEPALIVE_COUNT;
     struct sockaddr_storage dest_addr;
-    // Added below when do_retransmit() commented out
-    int len;
-    char rx_buffer[128];
 
     if (addr_family == AF_INET) {
         struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
@@ -169,17 +205,11 @@ static void tcp_server_task(void *pvParameters)
 
         //do_retransmit(sock);
         while(1) {
-            len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-            if (len < 0) {
-                ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-            } else if (len == 0) {
-                ESP_LOGW(TAG, "Connection closed");
-                break;
-            } else {
-                rx_buffer[len] = 0; // Null-terminate whatever is received (like str)
-                ESP_LOGI(TAG, "Received %d bytes: %s, forwarding over UART", len, rx_buffer);
-                uart_write_bytes(UART_NUM, (const char*)rx_buffer, strlen(rx_buffer));
-            }
+            // Send message to AP
+            strcpy(msg_buffer, "Ahhhhh\r\n");
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+            send(sock, msg_buffer, strlen(msg_buffer), 0);
+            ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
         }
         
         shutdown(sock, 0);
@@ -191,7 +221,7 @@ CLEAN_UP:
     vTaskDelete(NULL);
 }
 
-void app_main(void)
+void init_wifi_ap(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -225,30 +255,5 @@ void app_main(void)
     esp_netif_t *esp_netif_ap = wifi_init_softap();
 
     /* Start WiFi */
-    ESP_ERROR_CHECK(esp_wifi_start() );
-    
-    
-    /* Initialize UART1 */ 
-    const uart_port_t uart_num = UART_NUM;
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-
-    const int uart_buffer_size = (1024 * 2);
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, uart_buffer_size, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, 17, 16, 18, 19));
-    // Setup UART buffered IO with event queue
-    // QueueHandle_t uart_queue;
-    // Install UART driver using an event queue here
-    //ESP_ERROR_CHECK(uart_driver_install(UART_NUM, uart_buffer_size, uart_buffer_size, 10, &uart_queue, 0));
-    //Start TCP server task
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
-
-    // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 5, NULL);
+    ESP_ERROR_CHECK(esp_wifi_start());
 }
