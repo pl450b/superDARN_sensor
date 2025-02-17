@@ -11,7 +11,14 @@
 
 #include "adc.h"
 
+extern QueueHandle_t dataQueue;
+extern adc_oneshot_unit_handle_t adc1_handle;
+extern adc_channel_t channels[4];
+extern adc_cali_handle_t adc1_cali_handle[4];
+
 static const char *TAG = "ADC";
+static int adc_raw[4];
+static double sensors[4];
 
 /*---------------------------------------------------------------*/
 static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -75,14 +82,13 @@ static void adc_calibration_deinit(adc_cali_handle_t handle)
 #endif
 }
 
-void adc_init(adc_channel_t *channel_array, adc_oneshot_unit_handle_t *adc1_handle, 
-    adc_cali_handle_t *adc1_cali_handle, uint8_t numChannels)
+void adc_init(void)
 {
     //-------------ADC1 Init---------------//
 	adc_oneshot_unit_init_cfg_t unitConfig = {
 		.unit_id = ADC_UNIT_1,  // ADC1
 	};
-	ESP_ERROR_CHECK(adc_oneshot_new_unit(&unitConfig, adc1_handle));
+	ESP_ERROR_CHECK(adc_oneshot_new_unit(&unitConfig, &adc1_handle));
 	
     //-------------ADC1 Channel(s) Config---------------//
 	adc_oneshot_chan_cfg_t channelConfig = {
@@ -90,14 +96,29 @@ void adc_init(adc_channel_t *channel_array, adc_oneshot_unit_handle_t *adc1_hand
 		.bitwidth = ADC_BITWIDTH_12,  // resolution 12 bit
 	};
 	
+  int numChannels = sizeof(channels)/sizeof(adc_channel_t);
 	for (int i=0; i<numChannels; i++)
 	{
-		ESP_ERROR_CHECK(adc_oneshot_config_channel(*adc1_handle, channel_array[i], &channelConfig));
-        bool cali_check = adc_calibration_init(ADC_UNIT_1, channel_array[i], ADC_ATTEN_DB_12, &adc1_cali_handle[i]);
+		ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, channels[i], &channelConfig));
+        bool cali_check = adc_calibration_init(ADC_UNIT_1, channels[i], ADC_ATTEN_DB_12, &adc1_cali_handle[i]);
         if(cali_check) {
-            ESP_LOGI(TAG, "Channel %i calibrated!", channel_array[i]);
+            ESP_LOGI(TAG, "Channel %i calibrated!", channels[i]);
         } else {
-            ESP_LOGE(TAG, "Channel %i failed to calibrate", channel_array[i]);
+            ESP_LOGE(TAG, "Channel %i failed to calibrate", channels[i]);
         }
 	}
+}
+
+void adc_to_queue_task(void* pvParameters) {
+    while (1) {
+        ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw[0]));
+        sensors[0] = 3.3*adc_raw[0]/4095;
+        ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        
+        BaseType_t tx_result = xQueueSend(dataQueue, &sensors, (TickType_t)0);
+        if(tx_result != pdPASS) {
+            ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
+        }
+    }
 }

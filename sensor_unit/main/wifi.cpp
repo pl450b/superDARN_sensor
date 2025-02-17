@@ -37,9 +37,9 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-extern QueueHandle_t sensorQueue;
+extern QueueHandle_t dataQueue;
 
-static const char *TAG = "Sensor Unit";
+static const char *TAG = "WIFI";
 
 /* FreeRTOS event group to signal when we are connected/disconnected */
 static EventGroupHandle_t s_wifi_event_group;
@@ -140,7 +140,7 @@ void tcp_server_task(void *pvParameters)
     int addr_family = AF_INET;
     int ip_protocol = 0;
     int keepAlive = 1;
-    char msg_buffer[128];
+    double msg_buffer[4];
     int keepIdle = KEEPALIVE_IDLE;
     int keepInterval = KEEPALIVE_INTERVAL;
     int keepCount = KEEPALIVE_COUNT;
@@ -205,11 +205,11 @@ void tcp_server_task(void *pvParameters)
 
         //do_retransmit(sock);
         while(1) {
-            // Send message to AP
-            strcpy(msg_buffer, "Ahhhhh\r\n");
-            vTaskDelay(500 / portTICK_PERIOD_MS);
-            send(sock, msg_buffer, strlen(msg_buffer), 0);
-            ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
+            // Send message to AP from dataQueue
+            BaseType_t que_err = xQueueReceive(dataQueue, &msg_buffer, (TickType_t)0);
+            send(sock, msg_buffer, sizeof(msg_buffer), 0);
+            ESP_LOGI(TAG, "Message transmitted over WIFI: %f", msg_buffer[0]);
+            vTaskDelay(pdMS_TO_TICKS(500));
         }
         
         shutdown(sock, 0);
