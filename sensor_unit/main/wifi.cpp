@@ -40,21 +40,42 @@
 extern QueueHandle_t dataQueue;
 
 static const char *TAG = "WIFI";
+static char connected_ips[MAX_STA_CONN][16];  // Stores connected IPs
 
 /* FreeRTOS event group to signal when we are connected/disconnected */
 static EventGroupHandle_t s_wifi_event_group;
+
+
+static char connected_ips[MAX_STA_CONN][16];  // Stores connected IPs
+
+static void update_connected_ips() {
+    wifi_sta_list_t wifi_sta_list;
+    esp_netif_sta_list_t netif_sta_list;
+    esp_netif_ip_info_t ip_info;
+    memset(connected_ips, 0, sizeof(connected_ips));  // Reset IP list
+
+    if (esp_wifi_ap_get_sta_list(&wifi_sta_list) == ESP_OK &&
+        esp_netif_get_sta_list(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &netif_sta_list) == ESP_OK) {
+        for (int i = 0; i < wifi_sta_list.num; i++) {
+            esp_netif_get_ip_info(netif_sta_list.sta[i].esp_netif, &ip_info);
+            snprintf(connected_ips[i], sizeof(connected_ips[i]), IPSTR, IP2STR(&ip_info.ip));
+            ESP_LOGI(TAG, "Updated IP list: %s", connected_ips[i]);
+        }
+    }
+}
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" joined, AID=%d",
-                 MAC2STR(event->mac), event->aid);
+        ESP_LOGI(TAG, "Station "MACSTR" joined, AID=%d", MAC2STR(event->mac), event->aid);
+        update_connected_ips();
+
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *) event_data;
-  ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d",
-                 MAC2STR(event->mac), event->aid, event->reason);
+        ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d", MAC2STR(event->mac), event->aid, event->reason);
+        update_connected_ips();
     }
 }
 
