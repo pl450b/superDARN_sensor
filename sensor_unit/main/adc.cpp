@@ -13,12 +13,6 @@
 
 static const char *TAG = "ADC";
 
-static int adc_raw[4];
-static int voltage[2];
-adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[4] = {ADC_CHANNEL_0, ADC_CHANNEL_3, ADC_CHANNEL_6, ADC_CHANNEL_7};
-adc_cali_handle_t adc1_cali_handle[4] = {NULL, NULL, NULL, NULL};
-
 /*---------------------------------------------------------------*/
 static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -81,13 +75,14 @@ static void adc_calibration_deinit(adc_cali_handle_t handle)
 #endif
 }
 
-void adc_init(adc_channel_t *channel_array, adc_cali_handle_t *adc1_cali_handle, uint8_t numChannels)
+void adc_init(adc_channel_t *channel_array, adc_oneshot_unit_handle_t *adc1_handle, 
+    adc_cali_handle_t *adc1_cali_handle, uint8_t numChannels)
 {
     //-------------ADC1 Init---------------//
 	adc_oneshot_unit_init_cfg_t unitConfig = {
 		.unit_id = ADC_UNIT_1,  // ADC1
 	};
-	ESP_ERROR_CHECK(adc_oneshot_new_unit(&unitConfig, &adc1_handle));
+	ESP_ERROR_CHECK(adc_oneshot_new_unit(&unitConfig, adc1_handle));
 	
     //-------------ADC1 Channel(s) Config---------------//
 	adc_oneshot_chan_cfg_t channelConfig = {
@@ -97,7 +92,7 @@ void adc_init(adc_channel_t *channel_array, adc_cali_handle_t *adc1_cali_handle,
 	
 	for (int i=0; i<numChannels; i++)
 	{
-		ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, channel_array[i], &channelConfig));
+		ESP_ERROR_CHECK(adc_oneshot_config_channel(*adc1_handle, channel_array[i], &channelConfig));
         bool cali_check = adc_calibration_init(ADC_UNIT_1, channel_array[i], ADC_ATTEN_DB_12, &adc1_cali_handle[i]);
         if(cali_check) {
             ESP_LOGI(TAG, "Channel %i calibrated!", channel_array[i]);

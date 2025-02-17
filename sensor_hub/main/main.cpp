@@ -44,5 +44,5 @@ void app_main(void)
     //Start TCP Client task
     xTaskCreate(tcp_client_task, "TCP Client Task", 4096, (void*)AF_INET, 5, NULL);
 
-    xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
+    // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
 }
