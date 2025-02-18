@@ -39,7 +39,41 @@
 
 extern QueueHandle_t sensorQueue;
 
-static const char *TAG = "Sensor Unit";
+static const char *TAG = "UNIT WIFI";
+static char connected_ips[MAX_STA_CONN][16];  // Stores connected IPs
+
+/* FreeRTOS event group to signal when we are connected/disconnected */
+static EventGroupHandle_t s_wifi_event_group;
+
+static void update_connected_ips() {
+    wifi_sta_list_t wifi_sta_list;
+    esp_netif_t netif_sta_list;
+    esp_netif_ip_info_t ip_info;
+    memset(connected_ips, 0, sizeof(connected_ips));  // Reset IP list
+
+    if (esp_wifi_ap_get_sta_list(&wifi_sta_list) == ESP_OK) {
+        for (int i = 0; i < wifi_sta_list.num; i++) {
+            esp_netif_get_ip_info(netif_sta_list.sta[i].esp_netif, &ip_info);
+            snprintf(connected_ips[i], sizeof(connected_ips[i]), IPSTR, IP2STR(&ip_info.ip));
+            ESP_LOGI(TAG, "Updated IP list: %s", connected_ips[i]);
+        }
+    }
+}
+
+static void wifi_event_handler(void *arg, esp_event_base_t event_base,
+                               int32_t event_id, void *event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
+        wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *) event_data;
+        ESP_LOGI(TAG, "Station "MACSTR" joined, AID=%d", MAC2STR(event->mac), event->aid);
+        update_connected_ips();
+
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+        wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *) event_data;
+        ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d", MAC2STR(event->mac), event->aid, event->reason);
+        update_connected_ips();
+    }
+}
 
 /* FreeRTOS event group to signal when we are connected/disconnected */
 static EventGroupHandle_t s_wifi_event_group;
@@ -132,93 +166,6 @@ void tcp_client_task(void *pvParameters) {
         }
     close(sock);
     }
-}
-
-void tcp_server_task(void *pvParameters)
-{
-    char addr_str[128];
-    int addr_family = AF_INET;
-    int ip_protocol = 0;
-    int keepAlive = 1;
-    char msg_buffer[128];
-    int keepIdle = KEEPALIVE_IDLE;
-    int keepInterval = KEEPALIVE_INTERVAL;
-    int keepCount = KEEPALIVE_COUNT;
-    struct sockaddr_storage dest_addr;
-
-    if (addr_family == AF_INET) {
-        struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
-        dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
-        dest_addr_ip4->sin_family = AF_INET;
-        dest_addr_ip4->sin_port = htons(PORT);
-        ip_protocol = IPPROTO_IP;
-    }
-
-    int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
-    if (listen_sock < 0) {
-        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        vTaskDelete(NULL);
-        return;
-    }
-    int opt = 1;
-    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    ESP_LOGI(TAG, "Socket created");
-
-    int err = bind(listen_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    if (err != 0) {
-        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        ESP_LOGE(TAG, "IPPROTO: %d", addr_family);
-        goto CLEAN_UP;
-    }
-    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
-
-    err = listen(listen_sock, 1);
-    if (err != 0) {
-        ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
-        goto CLEAN_UP;
-    }
-
-    while (1) {
-
-        ESP_LOGI(TAG, "Socket listening");
-
-        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
-        socklen_t addr_len = sizeof(source_addr);
-        int sock = accept(listen_sock, (struct sockaddr *)&source_addr, &addr_len);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
-            break;
-        }
-
-        // Set tcp keepalive option
-        setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
-        setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
-        // Convert ip address to string
-        if (source_addr.ss_family == PF_INET) {
-            inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
-        }
-
-        ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
-
-        //do_retransmit(sock);
-        while(1) {
-            // Send message to AP
-            strcpy(msg_buffer, "Ahhhhh\r\n");
-            vTaskDelay(500 / portTICK_PERIOD_MS);
-            send(sock, msg_buffer, strlen(msg_buffer), 0);
-            ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
-        }
-        
-        shutdown(sock, 0);
-        close(sock);
-    }
-
-CLEAN_UP:
-    close(listen_sock);
-    vTaskDelete(NULL);
 }
 
 void init_wifi_ap(void)
