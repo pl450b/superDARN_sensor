@@ -46,18 +46,7 @@ static char connected_ips[MAX_STA_CONN][16];  // Stores connected IPs
 static EventGroupHandle_t s_wifi_event_group;
 
 static void update_connected_ips() {
-    wifi_sta_list_t wifi_sta_list;
-    esp_netif_t netif_sta_list;
-    esp_netif_ip_info_t ip_info;
-    memset(connected_ips, 0, sizeof(connected_ips));  // Reset IP list
-
-    if (esp_wifi_ap_get_sta_list(&wifi_sta_list) == ESP_OK) {
-        for (int i = 0; i < wifi_sta_list.num; i++) {
-            esp_netif_get_ip_info(netif_sta_list.sta[i].esp_netif, &ip_info);
-            snprintf(connected_ips[i], sizeof(connected_ips[i]), IPSTR, IP2STR(&ip_info.ip));
-            ESP_LOGI(TAG, "Updated IP list: %s", connected_ips[i]);
-        }
-    }
+    // PAss
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
