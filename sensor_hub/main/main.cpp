@@ -22,6 +22,7 @@
 
 #include "uart.h"
 #include "wifi.h"
+#include "sensor_net.h"
 
 // extern void init_uart();
 // extern void init_wifi_ap();
@@ -31,6 +32,7 @@ extern "C" {
   void app_main(void);
 }
 
+SensorNetwork sensorNet;
 QueueHandle_t sensorQueue;
 
 void app_main(void)

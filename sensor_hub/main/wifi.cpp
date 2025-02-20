@@ -1,4 +1,6 @@
-#include <string.h>
+#include <string>
+#include <cstdio>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -20,23 +22,9 @@
 #include "driver/gpio.h"
 
 #include "wifi.h"
+#include "sensor_net.h"
 
-/* AP Configuration */  
-#define WIFI_AP_SSID                "WesleyMiniNetwork"
-#define WIFI_AP_PASSWD              "WesleyMiniNetwork"
-#define WIFI_CHANNEL                 6
-#define MAX_STA_CONN                 18
-#define PORT                         3333                    // TCP port number for the server
-#define KEEPALIVE_IDLE               240
-#define KEEPALIVE_INTERVAL           10
-#define KEEPALIVE_COUNT              5
-#define SERVER_IP                   "192.168.4.2"  
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-
+extern SensorNetwork sensorNet;
 extern QueueHandle_t sensorQueue;
 
 static const char *TAG = "UNIT WIFI";
@@ -54,16 +42,19 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" joined, AID=%d", MAC2STR(event->mac), event->aid);
-        update_connected_ips();
+        // ESP_LOGI(TAG, "Station "MACSTR" joined, AID=%d", MAC2STR(event->mac), event->aid);
 
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *) event_data;
-        ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d", MAC2STR(event->mac), event->aid, event->reason);
-        update_connected_ips();
+        // ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d", MAC2STR(event->mac), event->aid, event->reason);
+
     } else if(event_base == IP_EVENT && event_id == IP_EVENT_AP_STAIPASSIGNED) {
         ip_event_ap_staipassigned_t *event = (ip_event_ap_staipassigned_t *) event_data;
-        ESP_LOGI(TAG, "IP event hit!!!!");
+        // ESP_LOGI(TAG, "IP we got: " IPSTR, IP2STR(&event->ip));
+        char ipStr[16], macStr[18];  // Max length for an IPv4 string / MAC address
+        std::snprintf(ipStr, sizeof(ipStr), "%d.%d.%d.%d", IP2STR(&event->ip));
+        std::snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(&event->mac));
+        sensorNet.unit_connected(std::string(ipStr), std::string(macStr));
     }
 }
 
