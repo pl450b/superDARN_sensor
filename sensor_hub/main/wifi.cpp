@@ -62,6 +62,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Station "MACSTR" left, AID=%d, reason:%d", MAC2STR(event->mac), event->aid, event->reason);
         update_connected_ips();
     } else if(event_base == IP_EVENT && event_id == IP_EVENT_AP_STAIPASSIGNED) {
+        ip_event_ap_staipassigned_t *event = (ip_event_ap_staipassigned_t *) event_data;
         ESP_LOGI(TAG, "IP event hit!!!!");
     }
 }
