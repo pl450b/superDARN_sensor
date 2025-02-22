@@ -113,10 +113,12 @@ void adc_to_queue_task(void* pvParameters) {
     while (1) {
         ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw[0]));
         sensors[0] = 3.3*adc_raw[0]/4095;
-        ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);
+        // ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);
         vTaskDelay(pdMS_TO_TICKS(500));
         
-        BaseType_t tx_result = xQueueSend(dataQueue, &sensors, (TickType_t)0);
+        const char* txStr = "I am TX_1";
+        // BaseType_t tx_result = xQueueSend(dataQueue, &sensors, (TickType_t)0);
+        BaseType_t tx_result = xQueueSend(dataQueue, txStr, (TickType_t)0);
         if(tx_result != pdPASS) {
             ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
         }

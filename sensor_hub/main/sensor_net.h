@@ -1,6 +1,8 @@
 #ifndef SENSORNET_H
 #define SENSORNET_H
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -8,9 +10,9 @@
 #include <array>
 
 #define UNIT_COUNT      5                 // Number of Sensor Units to be connected
-#define TX1_MAC         "14:cb:19:5c:0e:e2"     // MAC of host?
-#define TX2_MAC         "cc:7b:5c:e3:07:e4"     // This might be my printer
-#define TX3_MAC         "a8:42:e3:91:45:5c"
+#define TX1_MAC         "a8:42:e3:91:45:5c"     // MAC of host?
+#define TX2_MAC         "cc:7b:5c:e2:db:5c"     // This might be my printer
+#define TX3_MAC         "00:00:00:00:00:00"
 #define TX4_MAC         "00:00:00:00:00:00"
 #define TX5_MAC         "00:00:00:00:00:00"
 
@@ -19,13 +21,15 @@
 // Struct to hold networking info for each Sensor Unit
 typedef struct {
     int tx_num;
-    std::string ip;
-    std::string mac;
+    std::string ip = "";
+    std::string mac = "";
 } sensor_unit;
 
 class SensorNetwork {
 private:
     sensor_unit unit_map[UNIT_COUNT+1]; 
+
+    TaskHandle_t netHandle[UNIT_COUNT+1] = {NULL};
 
     bool macStringToBytes(const std::string& mac, uint8_t macBytes[6]);
 

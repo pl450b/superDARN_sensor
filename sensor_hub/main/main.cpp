@@ -24,27 +24,25 @@
 #include "wifi.h"
 #include "sensor_net.h"
 
-// extern void init_uart();
-// extern void init_wifi_ap();
-// extern void tcp_client_task(void *pvParameters);
-
 extern "C" {
   void app_main(void);
 }
 
 SensorNetwork sensorNet;
-QueueHandle_t sensorQueue;
+QueueHandle_t dataQueue;
 
 void app_main(void)
 {
-    sensorQueue = xQueueCreate(100, sizeof(char[100]));
+    dataQueue = xQueueCreate(100, sizeof(char[100]));
     init_uart();
     ESP_LOGI("SYSTEM", "Init UART complete");
     init_wifi_ap();
     ESP_LOGI("SYSTEM", "Init Wifi complete");
     
     //Start TCP Client task
-    xTaskCreate(tcp_client_task, "TCP Client Task", 4096, (void*)AF_INET, 5, NULL);
+    std::string ipAddr = "192.168.4.2";
+    const char* ipAddrConst = ipAddr.c_str();
+    // xTaskCreate(tcp_client_task, "TCP Client Task", 4096, (void*)ipAddrConst, 5, NULL);
 
     // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
 }

@@ -25,7 +25,7 @@
 #include "sensor_net.h"
 
 extern SensorNetwork sensorNet;
-extern QueueHandle_t sensorQueue;
+extern QueueHandle_t dataQueue;
 
 static const char *TAG = "HUB WIFI";
 
@@ -79,13 +79,14 @@ static esp_netif_t *wifi_init_softap(void)
 
 void tcp_client_task(void *pvParameters) {
     struct sockaddr_in server_addr;
+    const char* ipAddrStr = (const char*)pvParameters;
     int sock;
     int len;
     char rx_buffer[128];
 
     while (1) {
         // Configure server address
-        server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+        server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(PORT);
 
@@ -119,7 +120,12 @@ void tcp_client_task(void *pvParameters) {
             } else {
                 rx_buffer[len] = 0;
                 ESP_LOGI(TAG, "Received: %s", rx_buffer);
+                BaseType_t rx_result = xQueueSend(dataQueue, &rx_buffer, (TickType_t)0);
+                if(rx_result != pdPASS) {
+                    ESP_LOGE(TAG, "Push to queue failed with error: %i", rx_result);
+                }
             }
+            vTaskDelay(pdMS_TO_TICKS(400));
         }
     close(sock);
     }
@@ -141,10 +147,11 @@ void init_wifi_ap(void)
     /* Initialize event group */
     s_wifi_event_group = xEventGroupCreate();
 
-    /* Register Event handler */
+    /* Register WIFI handler */
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                     ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
-
+    
+    /* Register IP handler */
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, 
                     &wifi_event_handler, NULL, NULL));
 

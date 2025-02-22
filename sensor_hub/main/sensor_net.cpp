@@ -9,6 +9,7 @@
 #include <array>
 
 #include "sensor_net.h"
+#include "wifi.h"
 
 static const char *TAG = "NETWORK CLASS";
 // ----- Private Functions -----
@@ -71,6 +72,7 @@ std::string SensorNetwork::ipBytesToString(uint32_t ipAddress) {
 }
 
 SensorNetwork::SensorNetwork(void) {
+    // Assign hard-coded MAC addresses
     unit_map[1].mac = TX1_MAC;
     unit_map[2].mac = TX2_MAC;
     unit_map[3].mac = TX3_MAC;
@@ -101,9 +103,23 @@ int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
             if(unit_map[i].ip == "") return 0;
             else {
                 unit_map[i].ip = "";
+                vTaskDelete(netHandle[i]);
+                netHandle[i] = NULL;
+                ESP_LOGE(TAG, "Transmitter %i disconnected", i);
                 return i;
             } 
         }
     }
     return -1;
+}
+
+void SensorNetwork::unit_task(void *pvParameters) {
+    int unit_num = (int)pvParameters;
+    bool unit_status = false;
+
+    if(unit_map[unit_num] != "") {
+        unit_status = true;
+        xTaskCreate(tcp_client_task, "Socket Task", 4096, (void*)ipStr.c_str(), 5, &netHandle[unit_num]);
+        
+    }
 }
