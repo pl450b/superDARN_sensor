@@ -10,13 +10,12 @@
 #include <array>
 
 #define UNIT_COUNT      5                 // Number of Sensor Units to be connected
-#define TX1_MAC         "a8:42:e3:91:45:5c"     // MAC of host?
+#define TX1_MAC         "88:13:bf:04:65:90"     // MAC of host?
 #define TX2_MAC         "cc:7b:5c:e2:db:5c"     // This might be my printer
-#define TX3_MAC         "00:00:00:00:00:00"
+#define TX3_MAC         "a8:42:e3:91:45:5c"
 #define TX4_MAC         "00:00:00:00:00:00"
 #define TX5_MAC         "00:00:00:00:00:00"
 
-#include <string>
 
 // Struct to hold networking info for each Sensor Unit
 typedef struct {
@@ -56,7 +55,7 @@ public:
 
     bool check_unit_connected(int unit_num);
 
-    void unit_task(void *pvParameters);
+    void unit_task(int unit_num);
 };
 
 #endif // SENSORNET_H

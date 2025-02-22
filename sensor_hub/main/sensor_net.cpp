@@ -1,6 +1,13 @@
 #include "esp_mac.h"
 #include "esp_wifi.h"
+#include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif_net_stack.h"
+#include "esp_netif.h"
+#include "nvs_flash.h"
+#include "lwip/inet.h"
+#include "lwip/netdb.h"
+#include "lwip/sockets.h"
 
 #include <string>
 #include <iostream>
@@ -10,6 +17,8 @@
 
 #include "sensor_net.h"
 #include "wifi.h"
+
+extern QueueHandle_t dataQueue;
 
 static const char *TAG = "NETWORK CLASS";
 // ----- Private Functions -----
@@ -118,57 +127,89 @@ bool SensorNetwork::check_unit_connected(int unit_num) {
     return(unit_map[unit_num].wifi);
 }
 
-void SensorNetwork::unit_task(void *pvParameters) {
-    int unit_num = (int)pvParameters;
+void SensorNetwork::unit_task(int unit_num) {
+    // Initial setup
+    // int unit_num = (int)pvParameters;
+    // Ensure unit_num is within bounds
+    if (unit_num < 0 || unit_num >= UNIT_COUNT) {
+        ESP_LOGE("ERROR", "Invalid unit number: %d", unit_num);
+        vTaskDelete(NULL);
+        return;
+    }
+
     const char* ipAddrStr = unit_map[unit_num].ip.c_str();
+    std::string unitTag = "UNIT_" + std::to_string(unit_num) + " TASK";
+    const char* UNIT_TAG = unitTag.c_str();  // Get C-style string
+
     struct sockaddr_in server_addr;
-    int sock;
+    int sock = -1;
     int len;
-    char rx_buffer[128];
+    char queue_buffer[128];
 
-    while (1) {
-        // Configure server address
-        server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(PORT);
+    // Task loop started
+    while(1) {
+        ESP_LOGI(UNIT_TAG, "Task started!");
 
-        // Create socket
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
+        // Wifi loop, doesn't pass until wifi is connected
+        while(!unit_map[unit_num].wifi) {
+            ESP_LOGE(UNIT_TAG, "Not connected to network");
+            std::string temp_msg = "Unit" + std::to_string(unit_num) + " not connected to WIFI, retrying...";
+            strncpy(queue_buffer, temp_msg.c_str(), sizeof(queue_buffer) - 1);
+            queue_buffer[sizeof(queue_buffer) - 1] = '\0';  // Ensure null termination
+            BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
+            if(rx_result != pdPASS) {
+                ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+            }
+            vTaskDelay(pdMS_TO_TICKS(500));
         }
-        ESP_LOGI(TAG, "Socket created");
 
-        // Connect to socket
-        int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
-        if (err != 0) {
-            ESP_LOGE(TAG, "Socket unable to connect, error: %d", errno);
-            close(sock);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
+        // Socket loop, doesn't pass until wifi and socket are connected
+        while(unit_map[unit_num].wifi && !unit_map[unit_num].socket) {
+            // Configure server address
+            server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_port = htons(PORT);
+
+            // Create socket
+            sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock < 0) {
+                ESP_LOGE(UNIT_TAG, "Unable to create socket");
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+
+            // Connect to socket
+            int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+            if (err != 0) {
+                ESP_LOGE(UNIT_TAG, "Socket unable to connect, error: %d", errno);
+                close(sock);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+            unit_map[unit_num].socket = true;
+            ESP_LOGI(UNIT_TAG, "Socket connection established, ready to receive!");
         }
-        ESP_LOGI(TAG, "Connected to server, ready to receive!");
-        
-        while(1) {
-            len = recv(sock, rx_buffer, sizeof(rx_buffer)-1, 0);
+
+        // Receive loop, continues unless wifi or socket disconnects    
+        while(unit_map[unit_num].wifi && unit_map[unit_num].socket) {
+            len = recv(sock, queue_buffer, sizeof(queue_buffer)-1, 0);
             if(len < 0) { 
-                ESP_LOGE(TAG, "Error occurred when receiving: error %d", errno);
+                ESP_LOGE(UNIT_TAG, "Error occurred when receiving: error %d", errno);
                 break;
             } else if (len == 0) {
-                ESP_LOGW(TAG, "Connection closed");
+                ESP_LOGW(UNIT_TAG, "Socket connection closed");
+                unit_map[unit_num].socket = false;
                 break;
             } else {
-                rx_buffer[len] = 0;
-                ESP_LOGI(TAG, "Received: %s", rx_buffer);
-                BaseType_t rx_result = xQueueSend(dataQueue, &rx_buffer, (TickType_t)0);
+                queue_buffer[len] = 0;
+                ESP_LOGI(UNIT_TAG, "Socket received: %s", queue_buffer);
+                BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
                 if(rx_result != pdPASS) {
-                    ESP_LOGE(TAG, "Push to queue failed with error: %i", rx_result);
+                    ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(400));
         }
-    close(sock);
+        close(sock);
     }
 }
