@@ -76,61 +76,6 @@ static esp_netif_t *wifi_init_softap(void)
     return esp_netif_ap;
 }
 
-
-void tcp_client_task(void *pvParameters) {
-    struct sockaddr_in server_addr;
-    const char* ipAddrStr = (const char*)pvParameters;
-    int sock;
-    int len;
-    char rx_buffer[128];
-
-    while (1) {
-        // Configure server address
-        server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(PORT);
-
-        // Create socket
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "Socket created");
-
-        // Connect to socket
-        int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
-        if (err != 0) {
-            ESP_LOGE(TAG, "Socket unable to connect, error: %d", errno);
-            close(sock);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            continue;
-        }
-        ESP_LOGI(TAG, "Connected to server, ready to receive!");
-        
-        while(1) {
-            len = recv(sock, rx_buffer, sizeof(rx_buffer)-1, 0);
-            if(len < 0) { 
-                ESP_LOGE(TAG, "Error occurred when receiving: error %d", errno);
-                break;
-            } else if (len == 0) {
-                ESP_LOGW(TAG, "Connection closed");
-                break;
-            } else {
-                rx_buffer[len] = 0;
-                ESP_LOGI(TAG, "Received: %s", rx_buffer);
-                BaseType_t rx_result = xQueueSend(dataQueue, &rx_buffer, (TickType_t)0);
-                if(rx_result != pdPASS) {
-                    ESP_LOGE(TAG, "Push to queue failed with error: %i", rx_result);
-                }
-            }
-            vTaskDelay(pdMS_TO_TICKS(400));
-        }
-    close(sock);
-    }
-}
-
 void init_wifi_ap(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());

@@ -71,6 +71,7 @@ std::string SensorNetwork::ipBytesToString(uint32_t ipAddress) {
     return oss.str();
 }
 
+// ----- Public Functions -----
 SensorNetwork::SensorNetwork(void) {
     // Assign hard-coded MAC addresses
     unit_map[1].mac = TX1_MAC;
@@ -88,6 +89,7 @@ int SensorNetwork::unit_connected(uint32_t ip, uint8_t mac[6]) {
     for(int i = 0; i <= UNIT_COUNT; i++) {
         if(unit_map[i].mac == macStr) {
             unit_map[i].ip = ipStr;
+            unit_map[i].wifi = true;
             ESP_LOGI(TAG, "Transmitter %i connected with IP %s", i, ipStr.c_str());
             return i;
         }
@@ -103,8 +105,7 @@ int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
             if(unit_map[i].ip == "") return 0;
             else {
                 unit_map[i].ip = "";
-                vTaskDelete(netHandle[i]);
-                netHandle[i] = NULL;
+                unit_map[i].wifi = false;
                 ESP_LOGE(TAG, "Transmitter %i disconnected", i);
                 return i;
             } 
@@ -113,13 +114,61 @@ int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
     return -1;
 }
 
+bool SensorNetwork::check_unit_connected(int unit_num) {
+    return(unit_map[unit_num].wifi);
+}
+
 void SensorNetwork::unit_task(void *pvParameters) {
     int unit_num = (int)pvParameters;
-    bool unit_status = false;
+    const char* ipAddrStr = unit_map[unit_num].ip.c_str();
+    struct sockaddr_in server_addr;
+    int sock;
+    int len;
+    char rx_buffer[128];
 
-    if(unit_map[unit_num] != "") {
-        unit_status = true;
-        xTaskCreate(tcp_client_task, "Socket Task", 4096, (void*)ipStr.c_str(), 5, &netHandle[unit_num]);
+    while (1) {
+        // Configure server address
+        server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(PORT);
+
+        // Create socket
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Unable to create socket");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
+        }
+        ESP_LOGI(TAG, "Socket created");
+
+        // Connect to socket
+        int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        if (err != 0) {
+            ESP_LOGE(TAG, "Socket unable to connect, error: %d", errno);
+            close(sock);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
+        }
+        ESP_LOGI(TAG, "Connected to server, ready to receive!");
         
+        while(1) {
+            len = recv(sock, rx_buffer, sizeof(rx_buffer)-1, 0);
+            if(len < 0) { 
+                ESP_LOGE(TAG, "Error occurred when receiving: error %d", errno);
+                break;
+            } else if (len == 0) {
+                ESP_LOGW(TAG, "Connection closed");
+                break;
+            } else {
+                rx_buffer[len] = 0;
+                ESP_LOGI(TAG, "Received: %s", rx_buffer);
+                BaseType_t rx_result = xQueueSend(dataQueue, &rx_buffer, (TickType_t)0);
+                if(rx_result != pdPASS) {
+                    ESP_LOGE(TAG, "Push to queue failed with error: %i", rx_result);
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(400));
+        }
+    close(sock);
     }
 }

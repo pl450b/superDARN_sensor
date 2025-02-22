@@ -45,4 +45,6 @@ void app_main(void)
     // xTaskCreate(tcp_client_task, "TCP Client Task", 4096, (void*)ipAddrConst, 5, NULL);
 
     // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
+    // for(int i = 0, )
+    //     xTaskCreate(tcp_client_task, "Socket Task", 4096, (void*)1, 5, NULL);
 }

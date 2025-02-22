@@ -20,7 +20,8 @@
 
 // Struct to hold networking info for each Sensor Unit
 typedef struct {
-    int tx_num;
+    bool wifi = false;
+    bool socket = false;
     std::string ip = "";
     std::string mac = "";
 } sensor_unit;
@@ -52,6 +53,10 @@ public:
     //      0: MAC recognized, IP never in map
     //     -1: MAC not recognized 
     int unit_disconnected(uint8_t mac[6]);
+
+    bool check_unit_connected(int unit_num);
+
+    void unit_task(void *pvParameters);
 };
 
 #endif // SENSORNET_H
