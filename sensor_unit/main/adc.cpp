@@ -116,7 +116,7 @@ void adc_to_queue_task(void* pvParameters) {
         // ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);
         vTaskDelay(pdMS_TO_TICKS(500));
         
-        const char* txStr = "I am TX_1";
+        const char* txStr = "I am TX_2";
         // BaseType_t tx_result = xQueueSend(dataQueue, &sensors, (TickType_t)0);
         BaseType_t tx_result = xQueueSend(dataQueue, txStr, (TickType_t)0);
         if(tx_result != pdPASS) {
