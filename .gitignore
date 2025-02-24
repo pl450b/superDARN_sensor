@@ -5,3 +5,5 @@ sensor_unit/build/*
 sensor_unit/sdkconfig
 
 host_computer/a.out
+
+*/.vscode
