@@ -1,10 +1,8 @@
 #ifndef WIFI_H
 #define WIFI_H
 
-void tcp_client_task(void *pvParameters);
+void wifi_init_sta(void);
 
 void tcp_server_task(void *pvParameters);
 
-void init_wifi_ap(void);
-
-#endif WIFI_H
+#endif // WIFI_H

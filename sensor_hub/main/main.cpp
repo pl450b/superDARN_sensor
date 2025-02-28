@@ -51,6 +51,9 @@ void app_main(void)
 
     // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
     // for(int i = 0, )
+
+    xTaskCreate(uart_queue_task, "Uart Task", 4096, (void*)1, 5, NULL);
+
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)1, 5, NULL);
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)2, 5, NULL);
 }

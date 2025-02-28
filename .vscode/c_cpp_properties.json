@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "ESP-IDF",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "~/esp/esp-idf/components/**"
+            ],
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/xtensa-esp32-elf-gcc"
+        }
+    ],
+    "version": 4
+}

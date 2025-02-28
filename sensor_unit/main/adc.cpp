@@ -15,6 +15,7 @@ extern QueueHandle_t dataQueue;
 extern adc_oneshot_unit_handle_t adc1_handle;
 extern adc_channel_t channels[4];
 extern adc_cali_handle_t adc1_cali_handle[4];
+extern bool conn_socket_status;
 
 static const char *TAG = "ADC";
 static int adc_raw[4];
@@ -110,7 +111,7 @@ void adc_init(void)
 }
 
 void adc_to_queue_task(void* pvParameters) {
-    while (1) {
+    while (conn_socket_status) {    // Only run when the socket is established
         ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw[0]));
         sensors[0] = 3.3*adc_raw[0]/4095;
         // ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);

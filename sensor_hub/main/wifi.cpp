@@ -14,9 +14,6 @@
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
-#if IP_NAPT
-#include "lwip/lwip_napt.h"
-#endif
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "driver/gpio.h"
@@ -61,6 +58,7 @@ static esp_netif_t *wifi_init_softap(void)
             .ssid_len = strlen(WIFI_AP_SSID),
             .channel = WIFI_CHANNEL,
             .authmode = WIFI_AUTH_WPA2_PSK,
+            .ssid_hidden = 0,
             .max_connection = MAX_STA_CONN,
             .pmf_cfg = {
                 .required = false,
