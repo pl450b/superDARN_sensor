@@ -13,7 +13,7 @@
 #define TX1_MAC         "88:13:bf:04:65:90"     // MAC of host?
 #define TX2_MAC         "cc:7b:5c:e2:db:5c"     // This might be my printer
 #define TX3_MAC         "a8:42:e3:91:45:5c"
-#define TX4_MAC         "00:00:00:00:00:00"
+#define TX4_MAC         "00:21:6a:39:70:11"     // My Desktop
 #define TX5_MAC         "00:00:00:00:00:00"
 
 
