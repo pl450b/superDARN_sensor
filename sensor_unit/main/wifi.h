@@ -5,6 +5,6 @@ void tcp_client_task(void *pvParameters);
 
 void tcp_server_task(void *pvParameters);
 
-void init_wifi_ap(void);
+void wifi_init_sta(void);
 
-#endif WIFI_H
+#endif // WIFI_H
