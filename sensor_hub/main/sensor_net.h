@@ -9,12 +9,25 @@
 #include <iomanip>
 #include <array>
 
-#define UNIT_COUNT      5                 // Number of Sensor Units to be connected
+#define UNIT_COUNT      18                       // Number of Sensor Units to be connected
 #define TX1_MAC         "cc:7b:5c:e2:db:5c"     
 #define TX2_MAC         "a8:42:e3:91:45:5c"     
 #define TX3_MAC         "00:00:00:00:00:00"
 #define TX4_MAC         "88:13:bf:04:65:90"     // MAC of host?
 #define TX5_MAC         "00:00:00:00:00:00"
+#define TX6_MAC         "00:00:00:00:00:00"
+#define TX7_MAC         "00:00:00:00:00:00"
+#define TX8_MAC         "00:00:00:00:00:00"
+#define TX9_MAC         "00:00:00:00:00:00"
+#define TX10_MAC         "00:00:00:00:00:00"
+#define TX11_MAC         "00:00:00:00:00:00"
+#define TX12_MAC         "00:00:00:00:00:00"
+#define TX13_MAC         "00:00:00:00:00:00"
+#define TX14_MAC         "00:00:00:00:00:00"
+#define TX15_MAC         "00:00:00:00:00:00"
+#define TX16_MAC         "00:00:00:00:00:00"
+#define TX17_MAC         "00:00:00:00:00:00"
+#define TX18_MAC         "00:00:00:00:00:00"
 
 
 // Struct to hold networking info for each Sensor Unit

@@ -57,5 +57,21 @@ void app_main(void)
 
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)1, 5, NULL);
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)2, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)3, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)4, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)5, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)6, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)7, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)8, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)9, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)10, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)11, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)12, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)13, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)14, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)15, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)16, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)17, 5, NULL);
+    xTaskCreate(unit_task, "Socket Task", 4096, (void*)18, 5, NULL);
     xTaskCreate(conn_task, "Connection Task", 4096, NULL, 5, NULL);
 }

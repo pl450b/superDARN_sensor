@@ -88,6 +88,19 @@ SensorNetwork::SensorNetwork(void) {
     unit_map[3].mac = TX3_MAC;
     unit_map[4].mac = TX4_MAC;
     unit_map[5].mac = TX5_MAC;
+    unit_map[6].mac = TX6_MAC;
+    unit_map[7].mac = TX7_MAC;
+    unit_map[8].mac = TX8_MAC;
+    unit_map[9].mac = TX9_MAC;
+    unit_map[10].mac = TX10_MAC;
+    unit_map[11].mac = TX11_MAC;
+    unit_map[12].mac = TX12_MAC;
+    unit_map[13].mac = TX13_MAC;
+    unit_map[14].mac = TX14_MAC;
+    unit_map[15].mac = TX15_MAC;
+    unit_map[16].mac = TX16_MAC;
+    unit_map[17].mac = TX17_MAC;
+    unit_map[18].mac = TX18_MAC;
 }
 
 // ----- Public Functions -----
@@ -95,7 +108,7 @@ int SensorNetwork::unit_connected(uint32_t ip, uint8_t mac[6]) {
     std::string macStr = macBytesToString(mac);
     std::string ipStr = ipBytesToString(ip);
 
-    for(int i = 0; i <= UNIT_COUNT; i++) {
+    for(int i = 1; i <= UNIT_COUNT; i++) {
         if(unit_map[i].mac == macStr) {
             unit_map[i].ip = ipStr;
             unit_map[i].wifi = true;
@@ -110,7 +123,7 @@ int SensorNetwork::unit_connected(uint32_t ip, uint8_t mac[6]) {
 
 int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
     std::string macStr = macBytesToString(mac);
-    for(int i = 0; i <= UNIT_COUNT; i++) {
+    for(int i = 1; i <= UNIT_COUNT; i++) {
         if(unit_map[i].mac == macStr) {
             if(unit_map[i].ip == "") return 0;
             else {
@@ -132,7 +145,7 @@ bool SensorNetwork::check_unit_connected(int unit_num) {
 
 void SensorNetwork::unit_task(int unit_num) {
     // Ensure unit_num is within bounds
-    if (unit_num < 0 || unit_num >= UNIT_COUNT) {
+    if (unit_num <= 0 || unit_num > UNIT_COUNT) {
         ESP_LOGE("ERROR", "Invalid unit number: %d", unit_num);
         vTaskDelete(NULL);
         return;
