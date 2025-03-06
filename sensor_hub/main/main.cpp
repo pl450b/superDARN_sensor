@@ -53,8 +53,8 @@ void app_main(void)
     const char* ipAddrConst = ipAddr.c_str();
     // xTaskCreate(tcp_client_task, "TCP Client Task", 4096, (void*)ipAddrConst, 5, NULL);
 
-    // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
-    // for(int i = 0, )
+    xTaskCreate(uart_queue_task, "uart task", 4096, NULL, 5, NULL);
+
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)1, 5, NULL);
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)2, 5, NULL);
     xTaskCreate(conn_task, "Connection Task", 4096, NULL, 5, NULL);

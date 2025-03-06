@@ -6,6 +6,11 @@
 
 const uart_port_t uart_num = UART_NUM_2;
 
+extern QueueHandle_t dataQueue;
+
+static const char *TAG = "UART TASK";
+static char data[100];
+
 #define RX_BUF_SIZE           1024
 
 void init_uart(void)
@@ -30,6 +35,21 @@ void uart_send_test(void *pvParameters)
     char* test_str = "This is a test string.\n";
     uart_write_bytes(uart_num, (const char*)test_str, strlen(test_str));
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    ESP_LOGI("UART2", "sent test string over 2");
+    ESP_LOGI(TAG, "sent test string over 2");
+    }
+}
+
+void uart_queue_task(void *pvParameters)
+{
+    while(1) {
+        BaseType_t status = xQueueReceive(dataQueue, &data, 0); // Non-blocking
+
+        if (status == pdPASS) {
+            uart_write_bytes(uart_num, (const char*)data, strlen(data));
+            vTaskDelay(pdMS_TO_TICKS(20));
+        } else {
+            // ESP_LOGE(TAG, "dataQueue empty"); 
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
     }
 }
