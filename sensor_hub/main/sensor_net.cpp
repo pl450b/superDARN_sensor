@@ -153,7 +153,7 @@ void SensorNetwork::unit_task(int unit_num) {
 
         // Wifi loop, doesn't pass until wifi is connected
         while(!unit_map[unit_num].wifi) {
-            ESP_LOGE(UNIT_TAG, "Not connected to network");
+            // ESP_LOGE(UNIT_TAG, "Not connected to network");
             std::string temp_msg = "Unit" + std::to_string(unit_num) + " not connected to WIFI, retrying...";
             strncpy(queue_buffer, temp_msg.c_str(), sizeof(queue_buffer) - 1);
             queue_buffer[sizeof(queue_buffer) - 1] = '\0';  // Ensure null termination
@@ -203,7 +203,7 @@ void SensorNetwork::unit_task(int unit_num) {
             if(len < 0) { 
                 ESP_LOGE(UNIT_TAG, "Error occurred when receiving: error %d", errno);
                 unit_map[unit_num].socket = false;
-                break;
+                break;  // receive error, just try again without resetting the connection
             } else if (len == 0) {
                 ESP_LOGW(UNIT_TAG, "Socket connection closed");
                 unit_map[unit_num].socket = false;

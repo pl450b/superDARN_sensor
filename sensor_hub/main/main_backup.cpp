@@ -36,10 +36,6 @@ static void unit_task(void *pvParameters) {
     sensorNet.unit_task(unit_num);
 }
 
-static void conn_task(void *pvParameters) {
-  sensorNet.update_conn_unit();
-}
-
 void app_main(void)
 {
     dataQueue = xQueueCreate(100, sizeof(char[100]));
@@ -55,10 +51,6 @@ void app_main(void)
 
     // xTaskCreate(uart_send_test, "uart test", 4096, NULL, 3, NULL);
     // for(int i = 0, )
-
-    xTaskCreate(uart_queue_task, "Uart Task", 4096, (void*)1, 5, NULL);
-
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)1, 5, NULL);
     xTaskCreate(unit_task, "Socket Task", 4096, (void*)2, 5, NULL);
-    xTaskCreate(conn_task, "Connection Task", 4096, NULL, 5, NULL);
 }

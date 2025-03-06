@@ -14,9 +14,6 @@
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
-#if IP_NAPT
-#include "lwip/lwip_napt.h"
-#endif
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "driver/gpio.h"
