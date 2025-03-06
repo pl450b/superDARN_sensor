@@ -18,11 +18,11 @@
 #include "sensor_net.h"
 #include "wifi.h"
 
+#define SOCKET_TIMEOUT              10
 extern QueueHandle_t dataQueue;
 
 static const char *TAG = "NETWORK CLASS";
 // ----- Private Functions -----
-
 
 bool SensorNetwork::macStringToBytes(const std::string& mac, uint8_t macBytes[6]) {
     if (mac.length() != 17) return false; // Ensure correct length "XX:XX:XX:XX:XX:XX"
@@ -100,6 +100,7 @@ int SensorNetwork::unit_connected(uint32_t ip, uint8_t mac[6]) {
             unit_map[i].ip = ipStr;
             unit_map[i].wifi = true;
             ESP_LOGI(TAG, "Transmitter %i connected with IP %s", i, ipStr.c_str());
+            esp_wifi_ap_get_sta_list(&conn_units);
             return i;
         }
     }
@@ -115,6 +116,8 @@ int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
             else {
                 unit_map[i].ip = "";
                 unit_map[i].wifi = false;
+                unit_map[i].socket = false;
+                esp_wifi_ap_get_sta_list(&conn_units);
                 ESP_LOGE(TAG, "Transmitter %i disconnected", i);
                 return i;
             } 
@@ -128,8 +131,6 @@ bool SensorNetwork::check_unit_connected(int unit_num) {
 }
 
 void SensorNetwork::unit_task(int unit_num) {
-    // Initial setup
-    // int unit_num = (int)pvParameters;
     // Ensure unit_num is within bounds
     if (unit_num < 0 || unit_num >= UNIT_COUNT) {
         ESP_LOGE("ERROR", "Invalid unit number: %d", unit_num);
@@ -158,7 +159,7 @@ void SensorNetwork::unit_task(int unit_num) {
             queue_buffer[sizeof(queue_buffer) - 1] = '\0';  // Ensure null termination
             BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
             if(rx_result != pdPASS) {
-                ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
             }
             vTaskDelay(pdMS_TO_TICKS(500));
         }
@@ -177,6 +178,12 @@ void SensorNetwork::unit_task(int unit_num) {
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }
+            // Timeout setup
+            struct timeval timeout;
+            timeout.tv_sec = 3;  // Timeout of 5 seconds
+            timeout.tv_usec = 0;
+            setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
 
             // Connect to socket
             int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -195,6 +202,7 @@ void SensorNetwork::unit_task(int unit_num) {
             len = recv(sock, queue_buffer, sizeof(queue_buffer)-1, 0);
             if(len < 0) { 
                 ESP_LOGE(UNIT_TAG, "Error occurred when receiving: error %d", errno);
+                unit_map[unit_num].socket = false;
                 break;
             } else if (len == 0) {
                 ESP_LOGW(UNIT_TAG, "Socket connection closed");
@@ -205,11 +213,30 @@ void SensorNetwork::unit_task(int unit_num) {
                 ESP_LOGI(UNIT_TAG, "Socket received: %s", queue_buffer);
                 BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
                 if(rx_result != pdPASS) {
-                    ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                    // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                    // TODO: make a case for this
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(400));
         }
-        close(sock);
+        ESP_LOGE(UNIT_TAG, "Back in main loop somehow");
+        if(sock >= 0) close(sock);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void SensorNetwork::update_conn_unit(void) {
+    while(1) {
+        wifi_sta_list_t current_units;
+        esp_wifi_ap_get_sta_list(&current_units);
+
+        if(conn_units.num != current_units.num) {
+            ESP_LOGE("DEVICE CHECKER", "Connection mismatch, current: %i, stored: %i",
+                    current_units.num, conn_units.num);
+        }
+        else {
+            ESP_LOGI("DEVICE CHECKER", "Everything up-to-date");
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

@@ -10,10 +10,10 @@
 #include <array>
 
 #define UNIT_COUNT      5                 // Number of Sensor Units to be connected
-#define TX1_MAC         "88:13:bf:04:65:90"     // MAC of host?
-#define TX2_MAC         "cc:7b:5c:e2:db:5c"     // This might be my printer
-#define TX3_MAC         "a8:42:e3:91:45:5c"
-#define TX4_MAC         "00:00:00:00:00:00"
+#define TX1_MAC         "cc:7b:5c:e2:db:5c"     
+#define TX2_MAC         "a8:42:e3:91:45:5c"     
+#define TX3_MAC         "00:00:00:00:00:00"
+#define TX4_MAC         "88:13:bf:04:65:90"     // MAC of host?
 #define TX5_MAC         "00:00:00:00:00:00"
 
 
@@ -28,6 +28,7 @@ typedef struct {
 class SensorNetwork {
 private:
     sensor_unit unit_map[UNIT_COUNT+1]; 
+    wifi_sta_list_t conn_units;
 
     TaskHandle_t netHandle[UNIT_COUNT+1] = {NULL};
 
@@ -56,6 +57,8 @@ public:
     bool check_unit_connected(int unit_num);
 
     void unit_task(int unit_num);
+
+    void update_conn_unit(void);
 };
 
 #endif // SENSORNET_H
