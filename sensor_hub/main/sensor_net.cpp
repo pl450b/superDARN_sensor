@@ -156,7 +156,7 @@ void SensorNetwork::unit_task(int unit_num) {
 
         // Wifi loop, doesn't pass until wifi is connected
         while(!unit_map[unit_num].wifi) {
-            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "wifi not connected");
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "wifi not connected");
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
@@ -169,7 +169,7 @@ void SensorNetwork::unit_task(int unit_num) {
         // Socket loop, doesn't pass until wifi and socket are connected
         while(unit_map[unit_num].wifi && !unit_map[unit_num].socket) {
             // Record connection
-            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "connected to network");
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "connected to network");
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
@@ -205,7 +205,7 @@ void SensorNetwork::unit_task(int unit_num) {
             }
             unit_map[unit_num].socket = true;
 
-            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "connected to socket");
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "connected to socket");
             rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
@@ -227,7 +227,7 @@ void SensorNetwork::unit_task(int unit_num) {
                 break;
             } else {
                 queue_buffer[len] = 0;
-                snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s,%s", unit_num, "good", queue_buffer);
+                snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s,%s\r\n", unit_num, "good", queue_buffer);
                 BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
                 //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
                 if(rx_result != pdPASS) {

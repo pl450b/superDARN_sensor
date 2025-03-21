@@ -23,9 +23,11 @@ void init_uart(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    // We won't use a buffer for sending data.
-    uart_driver_install(uart_num, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
-    uart_param_config(uart_num, &uart_config);
+    int intr_alloc_flags = 0;
+
+    ESP_ERROR_CHECK(uart_driver_install(uart_num, RX_BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags));
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(uart_num, 17, 16, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
 void uart_send_test(void *pvParameters)
