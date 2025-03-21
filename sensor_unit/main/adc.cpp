@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "soc/soc_caps.h"
@@ -9,17 +6,27 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "adc.h"
 
+#define ADC_COUNT               4
+
 extern QueueHandle_t dataQueue;
-extern adc_oneshot_unit_handle_t adc1_handle;
-extern adc_channel_t channels[4];
-extern adc_cali_handle_t adc1_cali_handle[4];
 extern bool conn_socket_status;
 
+adc_oneshot_unit_handle_t adc1_handle;
+adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_3, ADC_CHANNEL_2};
+adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
+
+
 static const char *TAG = "ADC";
-static int adc_raw[4];
-static double sensors[4];
+static int adc_raw[ADC_COUNT];
+static double sensors[ADC_COUNT];
 
 /*---------------------------------------------------------------*/
 static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -111,17 +118,21 @@ void adc_init(void)
 }
 
 void adc_to_queue_task(void* pvParameters) {
+    std::ostringstream data_oss;
     while (conn_socket_status) {    // Only run when the socket is established
-        ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_6, &adc_raw[0]));
-        sensors[0] = 3.3*adc_raw[0]/4095;
-        // ESP_LOGI(TAG, "Raw Data: %f", sensors[0]);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        for(int i = 0; i < ADC_COUNT; i++) {
+            ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, channels[i], &adc_raw[i]));
+            sensors[i] = 3.3*adc_raw[i]/4095;
+            data_oss << sensors[i];
+            if (i != ADC_COUNT - 1) data_oss << ",";
+        }
         
-        const char* txStr = "I am TX_2";
-        // BaseType_t tx_result = xQueueSend(dataQueue, &sensors, (TickType_t)0);
-        BaseType_t tx_result = xQueueSend(dataQueue, txStr, (TickType_t)0);
+        std::string data_str = data_oss.str();
+
+        BaseType_t tx_result = xQueueSend(dataQueue, data_str.c_str(), (TickType_t)0);
         if(tx_result != pdPASS) {
             ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
         }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

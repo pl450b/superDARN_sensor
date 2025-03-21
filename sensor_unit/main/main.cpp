@@ -18,9 +18,6 @@ static const char *TAG = "wifi_station";
 bool wifi_status;
 bool listen_socket_status;
 bool conn_socket_status;
-adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[4];
-adc_cali_handle_t adc1_cali_handle[4];
 QueueHandle_t dataQueue;
 
 extern "C" {
