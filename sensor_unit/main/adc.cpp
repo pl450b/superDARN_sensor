@@ -17,10 +17,13 @@
 #define ADC_COUNT               4
 
 extern QueueHandle_t dataQueue;
-extern bool conn_socket_status;
+
+extern bool wifi_connected;
+extern bool l_sock_connected;
+extern bool c_sock_connected;
 
 adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_3, ADC_CHANNEL_2};
+adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_7, ADC_CHANNEL_5};
 adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
 
 
@@ -118,8 +121,8 @@ void adc_init(void)
 }
 
 void adc_to_queue_task(void* pvParameters) {
-    std::ostringstream data_oss;
-    while (conn_socket_status) {    // Only run when the socket is established
+    while (1) { 
+        std::ostringstream data_oss;
         for(int i = 0; i < ADC_COUNT; i++) {
             ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, channels[i], &adc_raw[i]));
             sensors[i] = 3.3*adc_raw[i]/4095;
@@ -128,11 +131,13 @@ void adc_to_queue_task(void* pvParameters) {
         }
         
         std::string data_str = data_oss.str();
-
-        BaseType_t tx_result = xQueueSend(dataQueue, data_str.c_str(), (TickType_t)0);
-        if(tx_result != pdPASS) {
-            ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
+        if(c_sock_connected) {
+            BaseType_t tx_result = xQueueSend(dataQueue, data_str.c_str(), (TickType_t)0);
+            if(tx_result != pdPASS) {
+                ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
+            }
         }
+
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }

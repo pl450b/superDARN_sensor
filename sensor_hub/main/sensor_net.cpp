@@ -12,6 +12,8 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <cstdio>
+#include <cstring>
 #include <iomanip>
 #include <array>
 
@@ -146,6 +148,7 @@ void SensorNetwork::unit_task(int unit_num) {
     int sock = -1;
     int len;
     char queue_buffer[128];
+    char tx_buffer[150];
 
     // Task loop started
     while(1) {
@@ -153,19 +156,26 @@ void SensorNetwork::unit_task(int unit_num) {
 
         // Wifi loop, doesn't pass until wifi is connected
         while(!unit_map[unit_num].wifi) {
-            // ESP_LOGE(UNIT_TAG, "Not connected to network");
-            std::string temp_msg = "Unit" + std::to_string(unit_num) + " not connected to WIFI, retrying...";
-            strncpy(queue_buffer, temp_msg.c_str(), sizeof(queue_buffer) - 1);
-            queue_buffer[sizeof(queue_buffer) - 1] = '\0';  // Ensure null termination
-            BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "wifi not connected");
+            BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
+            //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
                 // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                // TODO: make a case for this
             }
             vTaskDelay(pdMS_TO_TICKS(500));
         }
 
         // Socket loop, doesn't pass until wifi and socket are connected
         while(unit_map[unit_num].wifi && !unit_map[unit_num].socket) {
+            // Record connection
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "connected to network");
+            BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
+            //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
+            if(rx_result != pdPASS) {
+                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                // TODO: make a case for this
+            }
             // Configure server address
             server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
             server_addr.sin_family = AF_INET;
@@ -194,7 +204,14 @@ void SensorNetwork::unit_task(int unit_num) {
                 continue;
             }
             unit_map[unit_num].socket = true;
-            ESP_LOGI(UNIT_TAG, "Socket connection established, ready to receive!");
+
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s", unit_num, "connected to socket");
+            rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
+            //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
+            if(rx_result != pdPASS) {
+                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
+                // TODO: make a case for this
+            }
         }
 
         // Receive loop, continues unless wifi or socket disconnects    
@@ -210,8 +227,9 @@ void SensorNetwork::unit_task(int unit_num) {
                 break;
             } else {
                 queue_buffer[len] = 0;
-                ESP_LOGI(UNIT_TAG, "Socket received: %s", queue_buffer);
-                BaseType_t rx_result = xQueueSend(dataQueue, &queue_buffer, (TickType_t)0);
+                snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s,%s", unit_num, "good", queue_buffer);
+                BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
+                //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
                 if(rx_result != pdPASS) {
                     // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
                     // TODO: make a case for this
@@ -219,7 +237,7 @@ void SensorNetwork::unit_task(int unit_num) {
             }
             vTaskDelay(pdMS_TO_TICKS(400));
         }
-        ESP_LOGE(UNIT_TAG, "Back in main loop somehow");
+        // ESP_LOGE(UNIT_TAG, "Back in main loop somehow");
         if(sock >= 0) close(sock);
         vTaskDelay(pdMS_TO_TICKS(500));
     }

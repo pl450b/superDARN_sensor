@@ -42,9 +42,9 @@ extern QueueHandle_t dataQueue;
 
 static const char *TAG = "WIFI";
 static char connected_ips[MAX_STA_CONN][16];  // Stores connected IPs
-static bool wifi_connected = false;
-static bool l_sock_connected = false;
-static bool c_sock_connected = false;
+bool wifi_connected = false;
+bool l_sock_connected = false;
+bool c_sock_connected = false;
 
 /* FreeRTOS event group to signal when we are connected/disconnected */
 static EventGroupHandle_t s_wifi_event_group;
@@ -136,7 +136,7 @@ void tcp_server_task(void *pvParameters)
     int addr_family = AF_INET;
     int ip_protocol = 0;
     int keepAlive = 1;
-    double msg_buffer[4];
+    char msg_buffer[128];
     int keepIdle = KEEPALIVE_IDLE;
     int keepInterval = KEEPALIVE_INTERVAL;
     int keepCount = KEEPALIVE_COUNT;
@@ -207,8 +207,8 @@ void tcp_server_task(void *pvParameters)
             while(wifi_connected && l_sock_connected && c_sock_connected) {
                 // Send message to AP from dataQueue
                 BaseType_t que_err = xQueueReceive(dataQueue, &msg_buffer, (TickType_t)0);
-                send(sock, msg_buffer, sizeof(msg_buffer), 0);
-                ESP_LOGI(TAG, "Message transmitted over WIFI: %f", msg_buffer[0]);
+                send(sock, msg_buffer, sizeof(msg_buffer)-1, 0);
+                ESP_LOGI(TAG, "Message transmitted over WIFI: %s", msg_buffer);
                 vTaskDelay(pdMS_TO_TICKS(500));
             }
             

@@ -11,9 +11,9 @@
 
 #define UNIT_COUNT      5                 // Number of Sensor Units to be connected
 
-#define TX1_MAC         "cc:7b:5c:e2:db:5c"     
-#define TX2_MAC         "a8:42:e3:91:45:5c"     
-#define TX3_MAC         "00:00:00:00:00:00"
+#define TX1_MAC         "cc:7b:5c:e2:f4:f4"     
+#define TX2_MAC         "cc:7b:5c:e3:07:e4"     
+#define TX3_MAC         "cc:7b:5c:e3:13:e8"
 #define TX4_MAC         "88:13:bf:04:65:90"     // MAC of host
 #define TX5_MAC         "00:00:00:00:00:00"
 

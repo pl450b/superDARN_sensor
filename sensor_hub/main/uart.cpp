@@ -9,7 +9,7 @@ const uart_port_t uart_num = UART_NUM_2;
 extern QueueHandle_t dataQueue;
 
 static const char *TAG = "UART TASK";
-static char data[100];
+static char data[128];
 
 #define RX_BUF_SIZE           1024
 
@@ -46,6 +46,7 @@ void uart_queue_task(void *pvParameters)
 
         if (status == pdPASS) {
             uart_write_bytes(uart_num, (const char*)data, strlen(data));
+            ESP_LOGI(TAG, "%s", data);  
             vTaskDelay(pdMS_TO_TICKS(20));
         } else {
             // ESP_LOGE(TAG, "dataQueue empty"); 

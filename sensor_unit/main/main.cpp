@@ -15,9 +15,6 @@
 #include "adc.h"
 
 static const char *TAG = "wifi_station";
-bool wifi_status;
-bool listen_socket_status;
-bool conn_socket_status;
 QueueHandle_t dataQueue;
 
 extern "C" {
