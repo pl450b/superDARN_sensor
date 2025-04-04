@@ -1,9 +1,11 @@
 sensor_hub/build/*
-sensor_hub/sdkconfig
+sensor_hub/sdkconfig*
 
 sensor_unit/build/*
-sensor_unit/sdkconfig
+sensor_unit/sdkconfig*
 
 host_computer/a.out
+
+secrets.h
 
 */.vscode

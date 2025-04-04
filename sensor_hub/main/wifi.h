@@ -1,9 +1,11 @@
 #ifndef WIFI_H
 #define WIFI_H
 
+#include "../../secrets.h"
+
 /* AP Configuration */  
-#define WIFI_AP_SSID                "WesleyMiniNetwork"
-#define WIFI_AP_PASSWD              "WesleyMiniNetwork"
+#define WIFI_AP_SSID                WIFI_SSID
+#define WIFI_AP_PASSWD              WIFI_PASS
 #define WIFI_CHANNEL                 6
 #define MAX_STA_CONN                 18
 #define PORT                         3333                    // TCP port number for the server
