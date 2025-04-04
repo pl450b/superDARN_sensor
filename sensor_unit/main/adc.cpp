@@ -134,7 +134,8 @@ void adc_to_queue_task(void* pvParameters) {
         if(c_sock_connected) {
             BaseType_t tx_result = xQueueSend(dataQueue, data_str.c_str(), (TickType_t)0);
             if(tx_result != pdPASS) {
-                ESP_LOGE(TAG, "Push to queue failed with error: %i", tx_result);
+                ESP_LOGE(TAG, "Push to queue failed with error: %i, queue reset", tx_result);
+                xQueueReset(dataQueue);
             }
         }
 

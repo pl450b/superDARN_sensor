@@ -160,8 +160,8 @@ void SensorNetwork::unit_task(int unit_num) {
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
-                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
-                // TODO: make a case for this
+                ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i, queue reset", rx_result);
+                xQueueReset(dataQueue);
             }
             vTaskDelay(pdMS_TO_TICKS(500));
         }
@@ -173,8 +173,8 @@ void SensorNetwork::unit_task(int unit_num) {
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
-                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
-                // TODO: make a case for this
+                ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i, queue reset", rx_result);
+                xQueueReset(dataQueue);
             }
             // Configure server address
             server_addr.sin_addr.s_addr = inet_addr(ipAddrStr);
@@ -209,8 +209,8 @@ void SensorNetwork::unit_task(int unit_num) {
             rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
-                // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
-                // TODO: make a case for this
+                ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i, queue reset", rx_result);
+                xQueueReset(dataQueue);
             }
         }
 
@@ -231,8 +231,8 @@ void SensorNetwork::unit_task(int unit_num) {
                 BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
                 //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
                 if(rx_result != pdPASS) {
-                    // ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i", rx_result);
-                    // TODO: make a case for this
+                    ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i, queue reset", rx_result);
+                xQueueReset(dataQueue);
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(400));
