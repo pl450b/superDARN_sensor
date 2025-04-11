@@ -14,8 +14,13 @@
 #include <stdlib.h>
 
 #include "adc.h"
+#include "driver/gpio.h"
 
 #define ADC_COUNT               4
+#define GPIO_INPUT_IO_0     12
+#define GPIO_INPUT_IO_1     13
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0) | (1ULL<<GPIO_INPUT_IO_1))
+#define ESP_INTR_FLAG_DEFAULT 0
 
 extern QueueHandle_t dataQueue;
 
@@ -31,6 +36,8 @@ adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
 static const char *TAG = "ADC";
 static int adc_raw[ADC_COUNT];
 static double sensors[ADC_COUNT];
+
+static QueueHandle_t gpio_evt_queue = NULL;
 
 /*---------------------------------------------------------------*/
 static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -92,6 +99,19 @@ static void adc_calibration_deinit(adc_cali_handle_t handle)
     ESP_LOGI(TAG, "deregister %s calibration scheme", "Line Fitting");
     ESP_ERROR_CHECK(adc_cali_delete_scheme_line_fitting(handle));
 #endif
+}
+
+void gpio_init(void) {
+    gpio_config_t io_conf = {};
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    //bit mask of the pins
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //set as input mode
+    io_conf.mode = GPIO_MODE_INPUT;
+    //enable pull-up mode
+    io_conf.pull_up_en = (gpio_pullup_t)1;
+    gpio_config(&io_conf);
 }
 
 void adc_init(void)
