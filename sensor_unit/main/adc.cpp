@@ -5,6 +5,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
+#include "driver/gpio.h"
 
 #include <iostream>
 #include <sstream>
@@ -23,7 +24,7 @@ extern bool l_sock_connected;
 extern bool c_sock_connected;
 
 adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_7, ADC_CHANNEL_5};
+adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_7, ADC_CHANNEL_5}; // 34, 32, 35, 33 
 adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
 
 
