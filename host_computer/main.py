@@ -42,7 +42,7 @@ def read_serial(port, log_file):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python script.py <serial_port> <log_file.csv>")
+        print("Usage: python3 main.py <serial_port> <log_file.csv>")
         sys.exit(1)
     
     serial_port = sys.argv[1]
