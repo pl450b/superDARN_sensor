@@ -16,12 +16,6 @@
 #include "adc.h"
 #include "driver/gpio.h"
 
-#define ADC_COUNT               4
-#define GPIO_INPUT_IO_0     12
-#define GPIO_INPUT_IO_1     13
-#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0) | (1ULL<<GPIO_INPUT_IO_1))
-#define ESP_INTR_FLAG_DEFAULT 0
-
 extern QueueHandle_t dataQueue;
 
 extern bool wifi_connected;
@@ -39,6 +33,7 @@ static double sensors[ADC_COUNT];
 
 static QueueHandle_t gpio_evt_queue = NULL;
 
+// ADC Calibration stuff
 /*---------------------------------------------------------------*/
 static bool adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -101,20 +96,38 @@ static void adc_calibration_deinit(adc_cali_handle_t handle)
 #endif
 }
 
-void gpio_init(void) {
+static void IRAM_ATTR digital_input_isr_handler(void* arg)
+{
+    gpio_num_t gpio_num = (gpio_num_t)(intptr_t)arg;
+    int level = gpio_get_level(gpio_num);
+    gpio_stat_t temp_stat = {
+        .gpio_pin = gpio_num,
+        .value = level,
+    };
+    if(level == 0) xQueueSendFromISR(gpio_evt_queue, &temp_stat, NULL);
+}   
+
+void digital_input_init(void) {
     gpio_config_t io_conf = {};
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
-    //bit mask of the pins
+    //bit mask of the pins, use GPIO4/5 here
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
-    //enable pull-up mode
-    io_conf.pull_up_en = (gpio_pullup_t)1;
+    // Set pullup/pulldowns
+    io_conf.pull_up_en = (gpio_pullup_t)0;
+    io_conf.pull_down_en = (gpio_pulldown_t)0;
+
     gpio_config(&io_conf);
+    //install gpio isr service
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_0, digital_input_isr_handler, (void*) GPIO_INPUT_0);
+    gpio_isr_handler_add(GPIO_INPUT_0, digital_input_isr_handler, (void*) GPIO_INPUT_1);
 }
 
-void adc_init(void)
+void adc_oneshot_init(void)
 {
     //-------------ADC1 Init---------------//
 	adc_oneshot_unit_init_cfg_t unitConfig = {
@@ -142,6 +155,15 @@ void adc_init(void)
 }
 
 void adc_to_queue_task(void* pvParameters) {
+    while (1) { 
+        // 1. Count items from queue (by popping?)
+        // 2. Reset queue
+        // 3. Send count to another queue
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void digital_input_to_queue_task(void* pvParameters) {
     while (1) { 
         std::ostringstream data_oss;
         for(int i = 0; i < ADC_COUNT; i++) {
