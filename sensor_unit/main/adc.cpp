@@ -31,6 +31,10 @@ static const char *TAG = "ADC";
 static int adc_raw[ADC_COUNT];
 static double sensors[ADC_COUNT];
 
+static int rx_pulse_ct = 0;
+static int rf_pulse_ct = 0;
+static portMUX_TYPE input_mutex;
+
 static QueueHandle_t gpio_evt_queue = NULL;
 
 // ADC Calibration stuff
@@ -98,13 +102,13 @@ static void adc_calibration_deinit(adc_cali_handle_t handle)
 
 static void IRAM_ATTR digital_input_isr_handler(void* arg)
 {
-    gpio_num_t gpio_num = (gpio_num_t)(intptr_t)arg;
-    int level = gpio_get_level(gpio_num);
-    gpio_stat_t temp_stat = {
-        .gpio_pin = gpio_num,
-        .value = level,
-    };
-    if(level == 0) xQueueSendFromISR(gpio_evt_queue, &temp_stat, NULL);
+    int pin = (int)arg;
+    if(pin == RX_INPUT) {
+        rx_pulse_ct++;
+    }
+    if(pin == RF_INPUT) {
+        rf_pulse_ct++;
+    }
 }   
 
 void digital_input_init(void) {
@@ -123,8 +127,8 @@ void digital_input_init(void) {
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_INPUT_0, digital_input_isr_handler, (void*) GPIO_INPUT_0);
-    gpio_isr_handler_add(GPIO_INPUT_0, digital_input_isr_handler, (void*) GPIO_INPUT_1);
+    gpio_isr_handler_add(RX_INPUT, digital_input_isr_handler, (void*) RX_INPUT);
+    gpio_isr_handler_add(RF_INPUT, digital_input_isr_handler, (void*) RF_INPUT);
 }
 
 void adc_oneshot_init(void)
@@ -154,18 +158,23 @@ void adc_oneshot_init(void)
 	}
 }
 
-void adc_to_queue_task(void* pvParameters) {
-    while (1) { 
-        // 1. Count items from queue (by popping?)
-        // 2. Reset queue
-        // 3. Send count to another queue
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-}
 
-void digital_input_to_queue_task(void* pvParameters) {
+void input_to_queue_task(void* pvParameters) {
     while (1) { 
+        // Read sensor data and put into ostring
         std::ostringstream data_oss;
+
+        int rx_temp_ct = 0;
+        int rf_temp_ct = 0;
+        portENTER_CRITICAL(&input_mutex);
+        rx_temp_ct = rx_pulse_ct;
+        rf_temp_ct = rf_pulse_ct;
+        rx_pulse_ct = 0;
+        rf_pulse_ct = 0;
+        portEXIT_CRITICAL(&input_mutex);
+        data_oss << rx_temp_ct << "," << rf_temp_ct << ",";
+
+        vTaskDelay(pdMS_TO_TICKS(500));
         for(int i = 0; i < ADC_COUNT; i++) {
             ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, channels[i], &adc_raw[i]));
             sensors[i] = 3.3*adc_raw[i]/4095;
@@ -173,12 +182,15 @@ void digital_input_to_queue_task(void* pvParameters) {
             if (i != ADC_COUNT - 1) data_oss << ",";
         }
         
+        // Send to queue
         std::string data_str = data_oss.str();
         if(c_sock_connected) {
             BaseType_t tx_result = xQueueSend(dataQueue, data_str.c_str(), (TickType_t)0);
             if(tx_result != pdPASS) {
                 ESP_LOGE(TAG, "Push to queue failed with error: %i, queue reset", tx_result);
                 xQueueReset(dataQueue);
+            } else {
+                ESP_LOGI(TAG, "Sent: %s", data_str.c_str());
             }
         }
 

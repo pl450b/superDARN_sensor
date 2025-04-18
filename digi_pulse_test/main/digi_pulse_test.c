@@ -8,26 +8,24 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 
-#define GPIO_INPUT              34
+#define RX_INPUT                32
+#define RF_INPUT               33
 #define GPIO_INPUT_PIN_SEL      ((1ULL<<GPIO_INPUT))
 #define ESP_INTR_FLAG_DEFAULT   0
 
-typedef struct {
-    uint32_t gpio_pin;
-    int value;
-} gpio_stat_t;
-
-static QueueHandle_t gpio_evt_queue = NULL;
+static int rx_pulse_ct = 0;
+static int rf_pulse_ct = 0;
+static portMUX_TYPE input_mutex;
 
 static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
-    uint32_t gpio_num = (uint32_t) arg;
-    int level = gpio_get_level(gpio_num);
-    gpio_stat_t temp_stat = {
-        .gpio_pin = gpio_num,
-        .value = level,
-    };
-    if(level == 0) xQueueSendFromISR(gpio_evt_queue, &temp_stat, NULL);
+    int pin = (int)arg;
+    if(pin == RX_INPUT) {
+        rx_pulse_ct++;
+    }
+    if(pin == RF_INPUT) {
+        rf_pulse_ct++;
+    }
 }
 
 void gpio_init(void) {
@@ -51,14 +49,13 @@ void gpio_init(void) {
 
 static void gpio_task_example(void* arg)
 {
-    gpio_stat_t pin_value;
+    printf("Task Started");
+
     while(1) {
-        int pulse_ct = 0;
-        while(xQueueReceive(gpio_evt_queue, &pin_value, 5) != pdFALSE) {
-            // printf("GPIO[%"PRIu32"] intr, val: %d\n", pin_value.gpio_pin, pin_value.value);
-            pulse_ct++;
-        }
+        portENTER_CRITICAL(&input_mutex);
         printf("Pulse count = %i\n", pulse_ct);
+        pulse_ct = 0;
+        portEXIT_CRITICAL(&input_mutex);
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
@@ -66,9 +63,7 @@ static void gpio_task_example(void* arg)
 void app_main(void)
 {
     gpio_init();
-    //create a queue to handle gpio event from isr
-    gpio_evt_queue = xQueueCreate(10, sizeof(gpio_stat_t));
-    //start gpio task
+
     xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 10, NULL);
 
     printf("Minimum free heap size: %"PRIu32" bytes\n", esp_get_minimum_free_heap_size());

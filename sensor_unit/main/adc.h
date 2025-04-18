@@ -4,9 +4,9 @@
 #include "driver/gpio.h"
 
 #define ADC_COUNT               4
-#define GPIO_INPUT_0            GPIO_NUM_12
-#define GPIO_INPUT_1            GPIO_NUM_13
-#define GPIO_INPUT_PIN_SEL      ((1ULL<<GPIO_INPUT_0) | (1ULL<<GPIO_INPUT_1))
+#define RX_INPUT                (gpio_num_t)35
+#define RF_INPUT                (gpio_num_t)33
+#define GPIO_INPUT_PIN_SEL      ((1ULL<<RX_INPUT) | (1ULL<<RF_INPUT))
 #define ESP_INTR_FLAG_DEFAULT   0
 
 #include "esp_adc/adc_cali.h"
@@ -20,8 +20,6 @@ void adc_oneshot_init(void);
 
 void digital_input_init(void);
 
-void adc_to_queue_task(void* pvParameters);
-
-void digital_input_to_queue_task(void* pvParameters);
+void input_to_queue_task(void* pvParameters);
 
 #endif // ADC_H

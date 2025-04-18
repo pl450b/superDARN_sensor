@@ -8,7 +8,7 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 
-#define GPIO_INPUT              34
+#define GPIO_INPUT              35
 #define GPIO_INPUT_PIN_SEL      ((1ULL<<GPIO_INPUT))
 #define ESP_INTR_FLAG_DEFAULT   0
 
@@ -55,7 +55,7 @@ static void gpio_task_example(void* arg)
     while(1) {
         int pulse_ct = 0;
         while(xQueueReceive(gpio_evt_queue, &pin_value, 5) != pdFALSE) {
-            // printf("GPIO[%"PRIu32"] intr, val: %d\n", pin_value.gpio_pin, pin_value.value);
+            printf("GPIO[%"PRIu32"] intr, val: %d\n", pin_value.gpio_pin, pin_value.value);
             pulse_ct++;
         }
         printf("Pulse count = %i\n", pulse_ct);
