@@ -1,10 +1,10 @@
-sensor_hub/build/*
+sensor_hub/build
 sensor_hub/sdkconfig*
 
-sensor_unit/build/*
+sensor_unit/build
 sensor_unit/sdkconfig*
 
-host_computer/a.out
+host_computer/venv
 
 secrets.h
 
