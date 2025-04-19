@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "adc.h"
+#include "sensors.h"
 #include "driver/gpio.h"
 
 extern QueueHandle_t dataQueue;

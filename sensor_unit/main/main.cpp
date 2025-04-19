@@ -12,7 +12,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 
 #include "wifi.h"
-#include "adc.h"
+#include "sensors.h"
 
 static const char *TAG = "wifi_station";
 QueueHandle_t dataQueue;
