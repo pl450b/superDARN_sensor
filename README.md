@@ -8,18 +8,16 @@ _A real-time embedded monitoring and logging system for SuperDARN radar transmit
 ## Table of Contents
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
+- [Setup for Use](#setup-for-use)
 - [Code Organization](#code-organization)
 - [Installation & Setup](#installation--setup)
 - [Running the Code](#running-the-code)
-- [Usage](#usage)
 - [Contributors](#contributors)
 
 ---
 
 ## Overview
-_This section should briefly describe the problem the system solves, and its major components._
-
-> _TODO: Add project summary here._
+This project exists to provide the SuperDARN team with remotely accesible logging of the status of their transmitter arrays. A Sensor Unit installed in each transmitter takes measurements of the ambient temperature, RX pulses / 500ms, reflected pulses of 500ms, and status of the 400v line. These values are collected, then sent to a central Sensor Hub over a WiFi connection through a TCP socket. The Sensor Hub collects data from all 18 transmitters and sends the information to the host computer over a USB serial connection. A python program (`superDARN_sensor/host_computer/main.py`) records this data and logs to a CSV file. 
 
 ---
 
@@ -30,6 +28,17 @@ _Describe the system-level layout of components, data flow, and communication._
 
 ---
 
+## Setup for Use
+1. Install one Sensor Unit in each transmitter. 
+    - _TODO: add diagrams and explanation_
+2. Connect Sensor Hub to the Host Computer using a USB-C cable. 
+    - If both the Sensor Unit and Sensor Hub are receiving power, the will automatically connect and start exchanging data.
+3. Determine the what port on the Host Computer the Sensor Hub is connected to (`/dev/ttyUSB0, /dev/ttyUSB1, ...`)
+4. Run the python script `python3 main.py <serial_port> <log_file.csv>`. Use the `-v` command to display received data through stdout. Use the `-b` to run the program in a background process.
+5. Now logging has begun! If the CSV file you specified already exist, the python program will just append new data to it.
+
+---
+
 ## Code Organization
 
 This project has three main codebases:
@@ -37,7 +46,7 @@ This project has three main codebases:
 ### `sensor_unit`
 Software for the ESP32s placed inside each transmitter:
 - `sensor_unit/main/main.cpp`: Initializes peripherals and starts RTOS tasks.
-- `sensor_unit/main/adc.*`: Functions for setting up and running ADC/GPIO registers and tasks.
+- `sensor_unit/main/sensors.*`: Functions for setting up and running ADC/GPIO registers and tasks.
 - `sensor_unit/main/wifi.*`: Handles Wi-Fi connection and TCP server.
 
 ### `sensor_hub`
@@ -101,11 +110,9 @@ python3 main.py <serial_port> <log_file.csv>
 ```
 - If the .csv file does not exist, it will be created automatically.
 
-## Usage
 ## Contributors
-- Alex - TL
-- Wesley - software lead
-- Corey - 
-- Dagu - 
-- Tanner -
-
+- Tanner Beamer
+- Alex Betz
+- Corey Carpenter
+- Wesley Flynn
+- Dagmawi Theodros 
