@@ -23,7 +23,7 @@ extern bool l_sock_connected;
 extern bool c_sock_connected;
 
 adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4, ADC_CHANNEL_7, ADC_CHANNEL_5}; // 34, 32, 35, 33 
+adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4}; // 34 - temp, 32 - 
 adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
 
 
@@ -116,7 +116,7 @@ void digital_input_init(void) {
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
     //bit mask of the pins, use GPIO4/5 here
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    io_conf.pin_bit_mask = ((1ULL<<RX_INPUT) | (1ULL<<RF_INPUT));
     //set as input mode
     io_conf.mode = GPIO_MODE_INPUT;
     // Set pullup/pulldowns
@@ -124,6 +124,14 @@ void digital_input_init(void) {
     io_conf.pull_down_en = (gpio_pulldown_t)0;
 
     gpio_config(&io_conf);
+
+    io_conf.pin_bit_mask = (1ULL<<HV_INPUT);
+    // Set pullup/pulldowns
+    io_conf.pull_up_en = (gpio_pullup_t)0;
+    io_conf.pull_down_en = (gpio_pulldown_t)0;
+
+    gpio_config(&io_conf);
+
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin
@@ -164,15 +172,17 @@ void input_to_queue_task(void* pvParameters) {
         // Read sensor data and put into ostring
         std::ostringstream data_oss;
 
-        int rx_temp_ct = 0;
-        int rf_temp_ct = 0;
-        portENTER_CRITICAL(&input_mutex);
+        // Digital Inputs
+        int hv_line = gpio_get_level(HV_INPUT);
+        int rx_temp_ct;
+        int rf_temp_ct;
+        // portENTER_CRITICAL(&input_mutex);
         rx_temp_ct = rx_pulse_ct;
         rf_temp_ct = rf_pulse_ct;
         rx_pulse_ct = 0;
         rf_pulse_ct = 0;
-        portEXIT_CRITICAL(&input_mutex);
-        data_oss << rx_temp_ct << "," << rf_temp_ct << ",";
+        // portEXIT_CRITICAL(&input_mutex);
+        data_oss << hv_line << "," << rx_temp_ct << "," << rf_temp_ct << ",";
 
         vTaskDelay(pdMS_TO_TICKS(500));
         for(int i = 0; i < ADC_COUNT; i++) {

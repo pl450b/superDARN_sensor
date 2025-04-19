@@ -21,7 +21,7 @@ def read_serial(port, log_file):
             print(f"Created new log file: {log_file}")
             with open(log_file, mode='w', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(["Timestamp", "UnitNum", "Status", "Data"])
+                writer.writerow(["Timestamp", "UnitNum", "Status", "HV line, RX Pulse, RF Pulse, Temp"])
 
         with open(log_file, mode='a', newline='') as file:
             print(f"Appending data to log file: {log_file}")
