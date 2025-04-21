@@ -25,14 +25,15 @@ def read_serial(port, log_file, verbose):
                 print(f"Created new log file: {log_file}")
             with open(log_file, mode='w', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(["Timestamp", "UnitNum", "Status", "HV line, RX Pulse, RF Pulse, Temp"])
+                writer.writerow(["Timestamp", "UnitNum", "Status", "HV line", "RX Pulse", "RF Pulse", "Temp"])
 
         with open(log_file, mode='a', newline='') as file:
             if verbose:
                 print(f"Appending data to log file: {log_file}")
             while True:
                 data = ser.readline().decode('utf-8').strip()
-                if data:
+                if data.startswith("<record>"): # only log data marked as "<record>"
+                    data = data[8:]
                     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     file.write(f"{timestamp},{data}\n")
                     file.flush()
