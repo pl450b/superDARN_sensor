@@ -3,7 +3,7 @@
 
 #include "driver/gpio.h"
 
-#define ADC_COUNT               2
+#define ADC_COUNT               1
 #define RX_INPUT                (gpio_num_t)35      // RX Pulse
 #define RF_INPUT                (gpio_num_t)33      // Reflected Power Pulse
 #define HV_INPUT                (gpio_num_t)17      // 400v Input

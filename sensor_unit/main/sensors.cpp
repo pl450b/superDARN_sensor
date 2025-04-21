@@ -23,7 +23,7 @@ extern bool l_sock_connected;
 extern bool c_sock_connected;
 
 adc_oneshot_unit_handle_t adc1_handle;
-adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6, ADC_CHANNEL_4}; // 34 - temp, 32 - 
+adc_channel_t channels[ADC_COUNT] = {ADC_CHANNEL_6}; // 34 - temp, setup for more if needed
 adc_cali_handle_t adc1_cali_handle[ADC_COUNT];
 
 
