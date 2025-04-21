@@ -156,7 +156,7 @@ void SensorNetwork::unit_task(int unit_num) {
 
         // Wifi loop, doesn't pass until wifi is connected
         while(!unit_map[unit_num].wifi) {
-            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "wifi not connected");
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "not connected to hub");
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
@@ -184,7 +184,10 @@ void SensorNetwork::unit_task(int unit_num) {
             // Create socket
             sock = socket(AF_INET, SOCK_STREAM, 0);
             if (sock < 0) {
-                ESP_LOGE(UNIT_TAG, "Unable to create socket");
+                ESP_LOGE(UNIT_TAG, "Unable to create socket, deauthing");
+                uint8_t mac_addr;
+                macStringToBytes(unit_map[unit_num].mac, &mac_addr);
+                esp_wifi_deauth_sta(mac_addr);
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }
@@ -200,6 +203,7 @@ void SensorNetwork::unit_task(int unit_num) {
             if (err != 0) {
                 ESP_LOGE(UNIT_TAG, "Socket unable to connect, error: %d", errno);
                 close(sock);
+                unit_map[unit_num].socket = false;
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }

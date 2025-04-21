@@ -13,7 +13,7 @@
 #define KEEPALIVE_INTERVAL          10
 #define KEEPALIVE_COUNT             5
 #define SERVER_IP                   "192.168.4.2"  
-#define WIFI_RETRY_COUNT            10  // After 10 connect attemps, unit resets
+#define WIFI_RETRY_COUNT            2  // After 10 connect attemps, unit resets
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
