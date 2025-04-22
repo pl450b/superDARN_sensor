@@ -11,6 +11,8 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 
+#define ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED     1
+
 #include "wifi.h"
 #include "sensors.h"
 

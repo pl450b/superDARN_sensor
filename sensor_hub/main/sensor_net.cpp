@@ -111,6 +111,7 @@ int SensorNetwork::unit_connected(uint32_t ip, uint8_t mac[6]) {
 }
 
 int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
+    char tx_buffer[150];
     std::string macStr = macBytesToString(mac);
     for(int i = 0; i <= UNIT_COUNT; i++) {
         if(unit_map[i].mac == macStr) {
@@ -119,8 +120,11 @@ int SensorNetwork::unit_disconnected(uint8_t mac[6]) {
                 unit_map[i].ip = "";
                 unit_map[i].wifi = false;
                 unit_map[i].socket = false;
+                unit_map[i].reconnect = 0;
                 esp_wifi_ap_get_sta_list(&conn_units);
                 ESP_LOGE(TAG, "Transmitter %i disconnected", i);
+                snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", i, "disconnected,,,,");
+                xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
                 return i;
             } 
         }
@@ -163,13 +167,24 @@ void SensorNetwork::unit_task(int unit_num) {
                 ESP_LOGE(UNIT_TAG, "Push to queue failed with error: %i, queue reset", rx_result);
                 xQueueReset(dataQueue);
             }
+            unit_map[unit_num].reconnect = 0;
             vTaskDelay(pdMS_TO_TICKS(500));
         }
 
         // Socket loop, doesn't pass until wifi and socket are connected
         while(unit_map[unit_num].wifi && !unit_map[unit_num].socket) {
             // Record connection
-            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "connected to network,,,,");
+            unit_map[unit_num].reconnect++;
+            if(unit_map[unit_num].reconnect >= 3) {
+                ESP_LOGE(UNIT_TAG, "Unable to connect, resetting connection");
+                uint8_t mac_addr;
+                macStringToBytes(unit_map[unit_num].mac, &mac_addr);
+                esp_wifi_deauth_sta(mac_addr);
+                unit_map[unit_num].wifi = false;
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+            snprintf(tx_buffer, sizeof(tx_buffer), "%i,%s\r\n", unit_num, "connecting to network,,,,");
             BaseType_t rx_result = xQueueSend(dataQueue, &tx_buffer, (TickType_t)0);
             //ESP_LOGI(UNIT_TAG, "Sent to UART: %s", tx_buffer);
             if(rx_result != pdPASS) {
@@ -188,6 +203,7 @@ void SensorNetwork::unit_task(int unit_num) {
                 uint8_t mac_addr;
                 macStringToBytes(unit_map[unit_num].mac, &mac_addr);
                 esp_wifi_deauth_sta(mac_addr);
+                unit_map[unit_num].wifi = false;
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }
@@ -202,6 +218,9 @@ void SensorNetwork::unit_task(int unit_num) {
             int err = connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
             if (err != 0) {
                 ESP_LOGE(UNIT_TAG, "Socket unable to connect, error: %d", errno);
+                uint8_t mac_addr;
+                macStringToBytes(unit_map[unit_num].mac, &mac_addr);
+                esp_wifi_deauth_sta(mac_addr);
                 close(sock);
                 unit_map[unit_num].socket = false;
                 vTaskDelay(pdMS_TO_TICKS(500));

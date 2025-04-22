@@ -24,6 +24,7 @@ typedef struct {
     bool socket = false;
     std::string ip = "";
     std::string mac = "";
+    int reconnect = 0;
 } sensor_unit;
 
 class SensorNetwork {

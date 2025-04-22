@@ -41,7 +41,7 @@ void uart_queue_task(void *pvParameters)
             char send_buf[264];
             snprintf(send_buf, sizeof(send_buf), "<record>%s", data);
             uart_write_bytes(UART_DATA_NUM, (const char*)send_buf, strlen(send_buf));
-            ESP_LOGI(TAG, "%s", data);  
+            // ESP_LOGI(TAG, "%s", data);  
             vTaskDelay(pdMS_TO_TICKS(20));
         } else {
             // ESP_LOGE(TAG, "dataQueue empty"); 
