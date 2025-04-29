@@ -31,14 +31,17 @@ def read_serial(port, log_file, verbose):
             if verbose:
                 print(f"Appending data to log file: {log_file}")
             while True:
-                data = ser.readline().decode('utf-8').strip()
-                if data.startswith("<record>"): # only log data marked as "<record>"
-                    data = data[8:]
-                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    file.write(f"{timestamp},{data}\n")
-                    file.flush()
-                    if verbose:
-                        print(f"{timestamp},{data}")
+                try:
+                    data = ser.readline().decode('utf-8').strip()
+                    if data.startswith("<record>"): # only log data marked as "<record>"
+                        data = data[8:]
+                        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        file.write(f"{timestamp},{data}\n")
+                        file.flush()
+                        if verbose:
+                            print(f"{timestamp},{data}")
+                except:
+                    pass
 
     except serial.SerialException as e:
         print(f"Error: {e}")
