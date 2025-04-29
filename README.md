@@ -7,7 +7,6 @@ _A real-time embedded monitoring and logging system for SuperDARN radar transmit
 
 ## Table of Contents
 - [Overview](#overview)
-- [System Architecture](#system-architecture)
 - [Setup for Use](#setup-for-use)
 - [Code Organization](#code-organization)
 - [Installation & Setup](#installation--setup)
@@ -21,16 +20,8 @@ This project exists to provide the SuperDARN team with remotely accesible loggin
 
 ---
 
-## System Architecture
-_Describe the system-level layout of components, data flow, and communication._
-
-> _TODO: Add diagram and explanation._
-
----
-
 ## Setup for Use
 1. Install one Sensor Unit in each transmitter. 
-    - _TODO: add diagrams and explanation_
 2. Connect Sensor Hub to the Host Computer using a USB-C cable. 
     - If both the Sensor Unit and Sensor Hub are receiving power, the will automatically connect and start exchanging data.
 3. Determine the what port on the Host Computer the Sensor Hub is connected to (`/dev/ttyUSB0, /dev/ttyUSB1, ...`)
@@ -71,9 +62,23 @@ Python script for receiving and logging data via USB:
 
 ## Installation & Setup
 
+### ESP32 Code
 Before building or running any components, make sure the [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/index.html) development environment is installed and configured.
 
-> _TODO: Add version numbers and dependencies._
+### Host Computer Code
+To setup the environment for `main.py`, run the following commands in the `host_computer` directory:
+1. Create virtual environment
+    ```bash
+    python3 -m venv venv
+    ```
+2. Activate the virtual environment
+    ```bash
+    source venv/bin/activate
+    ```
+3. Install required dependencies
+    ```bash
+    pip3 install -r requirements.txt
+    ```
 
 ---
 
@@ -104,11 +109,9 @@ Before building or running any components, make sure the [ESP-IDF](https://docs.
 
 ### Host Computer Script (`host_computer`)
 
-Run the logger script:
-```bash
-python3 main.py <serial_port> <log_file.csv>
-```
-- If the .csv file does not exist, it will be created automatically.
+To run the logger script, first activate the venv with `source venv/bin/activate`, then run the script with: `python3 main.py <serial_port> <log_file.csv>`
+
+If the .csv file does not exist, it will be created automatically.
 
 ## Contributors
 - Tanner Beamer
